@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.exe
+*.asar
+test*.js
+extract-electron.js
+setup-electron.js
+re-extract.js
+test-electron/

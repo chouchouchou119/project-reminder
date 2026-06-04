@@ -1,0 +1,43 @@
+{
+  "name": "product-project-reminder",
+  "version": "1.0.0",
+  "description": "产品项目进度提醒 - 桌面工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "express": "^5.2.1",
+    "localtunnel": "^2.0.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.product-reminder.app",
+    "productName": "产品项目进度提醒",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "assets/**",
+      "node_modules/**"
+    ]
+  }
+}
