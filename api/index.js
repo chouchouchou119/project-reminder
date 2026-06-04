@@ -22,7 +22,6 @@ function convertDates(arr) {
         const ds = serialToDateStr(arr[r][c]);
         if (ds) arr[r][c] = ds;
       }
-  return arr;
 }
 
 function readExcel() {
@@ -34,32 +33,27 @@ function readExcel() {
   return { sheet1: s1, sheet2: s2, fileName: path.basename(DATA_FILE) };
 }
 
-// 密码验证
+const LOGIN_HTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>项目进度提醒</title><style>*{margin:0;padding:0}body{font-family:"Microsoft YaHei",Arial;background:#E3F2FD;display:flex;justify-content:center;align-items:center;height:100vh}.b{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center}h2{color:#1565C0;margin-bottom:20px}input{padding:10px 16px;border:2px solid #E0E0E0;border-radius:8px;font-size:16px;width:200px;text-align:center;outline:none}input:focus{border-color:#1565C0}button{margin-top:12px;padding:10px 32px;background:#1565C0;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}button:hover{background:#0D47A1}.err{color:#E53935;margin-top:8px}</style></head><body><div class="b"><h2>🔐 请输入访问密码</h2><form method="get" action="/"><input type="password" name="key" placeholder="输入密码" autofocus><br>__ERR__<button type="submit">确认</button></form></div></body></html>';
+
+// 密码中间件
 app.use((req, res, next) => {
   if (req.query.key === WEB_PASSWORD || (req.headers.cookie || '').includes('key=' + WEB_PASSWORD)) {
-    if (req.query.key === WEB_PASSWORD) res.setHeader('Set-Cookie', 'key=' + WEB_PASSWORD + '; Path=/; Max-Age=86400; SameSite=Lax');
+    if (req.query.key === WEB_PASSWORD) res.cookie('key', WEB_PASSWORD, { maxAge: 86400000 });
     return next();
   }
   if (req.method === 'GET') {
-    return res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>项目进度提醒</title><style>*{margin:0;padding:0}body{font-family:"Microsoft YaHei",Arial;background:#E3F2FD;display:flex;justify-content:center;align-items:center;height:100vh}.b{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center}h2{color:#1565C0;margin-bottom:20px}input{padding:10px 16px;border:2px solid #E0E0E0;border-radius:8px;font-size:16px;width:200px;text-align:center;outline:none}input:focus{border-color:#1565C0}button{margin-top:12px;padding:10px 32px;background:#1565C0;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}button:hover{background:#0D47A1}.err{color:#E53935;margin-top:8px}</style></head><body><div class="b"><h2>🔐 请输入访问密码</h2><form method="get" action="/"><input type="password" name="key" placeholder="输入密码" autofocus><br>' + (req.query.key ? '<p class="err">密码错误</p>' : '') + '<button type="submit">确认</button></form></div></body></html>');
+    return res.send(LOGIN_HTML.replace('__ERR__', req.query.key ? '<p class="err">密码错误</p>' : ''));
   }
   res.status(403).end();
 });
 
 // API
-app.get('/api/load', (req, res) => {
-  res.json(readExcel());
-});
+app.get('/api/load', (req, res) => res.json(readExcel()));
 
 // 主页
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 
 // 静态文件
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Vercel serverless export
-module.exports = (req, res) => {
-  return app(req, res);
-};
+module.exports = app;
