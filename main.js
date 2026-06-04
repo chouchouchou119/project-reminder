@@ -185,6 +185,47 @@ function setupIPC() {
     }
   });
 
+  // 同步到公网：复制 Excel 到 data/，推送到 GitHub
+  ipcMain.handle('sync:push', async () => {
+    try {
+      const { execSync } = require('child_process');
+      const projectDir = __dirname;
+      const dataDir = path.join(projectDir, 'data');
+
+      // 找到最新的Excel文件
+      const latest = findLatestExcel(EXCEL_FOLDER) || (currentExcelPath ? { fullPath: currentExcelPath, name: path.basename(currentExcelPath) } : null);
+      if (!latest) return { error: '没有可同步的Excel文件' };
+
+      // 复制到 docs/ 文件夹（GitHub Pages用）
+      const docsDir = path.join(projectDir, 'docs');
+      if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir);
+      const destName = '产品项目管理监控表20260529.xlsx';
+      fs.copyFileSync(latest.fullPath, path.join(docsDir, destName));
+      console.log('[同步] 已复制到docs/:', destName);
+
+      // 也复制到 data/
+      if (path.dirname(latest.fullPath) !== dataDir) {
+        fs.copyFileSync(latest.fullPath, path.join(dataDir, destName));
+      }
+
+      // Git add, commit, push
+      const gitDir = path.join(projectDir, '.git');
+      if (!fs.existsSync(gitDir)) return { error: 'Git 未初始化' };
+
+      execSync('git add data/', { cwd: projectDir, encoding: 'utf8' });
+      const status = execSync('git status --porcelain data/', { cwd: projectDir, encoding: 'utf8' });
+      if (!status.trim()) return { success: true, message: '数据没有变化' };
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      execSync('git commit -m "数据更新 ' + dateStr + '"', { cwd: projectDir, encoding: 'utf8' });
+      execSync('git push', { cwd: projectDir, encoding: 'utf8', timeout: 30000 });
+
+      return { success: true, message: '已同步！1-2分钟后公网网址自动更新。' };
+    } catch (e) {
+      return { error: '同步失败：' + (e.stderr || e.message) };
+    }
+  });
+
   // 启动网页版服务器 + 公网隧道
   let webServer = null;
   let tunnelProcess = null;

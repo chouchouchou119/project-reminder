@@ -90,7 +90,15 @@ body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3
   </div>
 </header>
 <section id="kpiSection">
-  <div class="kpi-card kpi-main" id="kpiMain"><div class="kpi-label">按时完成率</div><div class="kpi-value">--</div><div class="kpi-sub">加载中...</div></div>
+  <div class="kpi-card kpi-main" id="kpiMain">
+    <div class="kpi-label" style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+      <span>按时完成率</span>
+      <input type="date" id="dateStart" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="开始日期">
+      <span style="font-size:10px">~</span>
+      <input type="date" id="dateEnd" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="结束日期">
+    </div>
+    <div class="kpi-value">--</div><div class="kpi-sub">加载中...</div>
+  </div>
   <div class="kpi-card" id="kpiC0"><div class="kpi-label">📋 送检开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
   <div class="kpi-card" id="kpiC1"><div class="kpi-label">📋 送检结束</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
   <div class="kpi-card" id="kpiC2"><div class="kpi-label">📋 中试开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
@@ -131,6 +139,34 @@ if (document.cookie.indexOf('key=' + WEB_PWD) >= 0) {
 
 // ==================== 数据 ====================
 var allProjects = [], kpiData = null, searchText = '', filterNode = null, selectedSerial = null;
+var dateStart = '', dateEnd = '';
+
+function getFilteredProjects() {
+  var filtered = allProjects.slice();
+  if (searchText && searchText.trim()) {
+    var kw = searchText.trim().toLowerCase();
+    filtered = filtered.filter(function(p) { return p.name.toLowerCase().includes(kw) || p.series.toLowerCase().includes(kw) || p.person.toLowerCase().includes(kw); });
+  }
+  if (filterNode) {
+    var today = dateEnd || new Date().toISOString().split('T')[0];
+    filtered = filtered.filter(function(p) { return isNodeDelayed(p, filterNode, today); });
+  }
+  if (dateStart || dateEnd) {
+    filtered = filtered.filter(function(p) {
+      var plan = p.dates['送检开始计划']; if (!plan) return true;
+      if (dateStart && plan < dateStart) return false;
+      if (dateEnd && plan > dateEnd) return false;
+      return true;
+    });
+  }
+  return filtered;
+}
+
+function recalcKPI() {
+  var filtered = getFilteredProjects();
+  var today = dateEnd || new Date().toISOString().split('T')[0];
+  kpiData = calcKPI(filtered, today);
+}
 
 function clean(v) { return v ? String(v).replace(/\r?\n/g,' ').trim() : ''; }
 function daysBetween(d1, d2) {
@@ -309,10 +345,9 @@ function renderKPI() {
 }
 
 function renderList() {
+  recalcKPI(); renderKPI();
   var container=document.getElementById('projectList');
-  var filtered=allProjects.slice();
-  if(searchText){var kw=searchText.toLowerCase();filtered=filtered.filter(function(p){return p.name.toLowerCase().includes(kw)||p.series.toLowerCase().includes(kw)||p.person.toLowerCase().includes(kw);});}
-  if(filterNode){filtered=filtered.filter(function(p){return isNodeDelayed(p,filterNode,new Date().toISOString().split('T')[0]);});}
+  var filtered=getFilteredProjects();
   container.innerHTML='';
   if(filtered.length===0){container.innerHTML='<div class="empty-state"><p>没有匹配的项目</p>'+(filterNode?'<button class="btn" onclick="filterNode=null;renderList()">← 返回</button>':'')+'</div>';return;}
   if(filterNode){var banner=document.createElement('div');banner.className='filter-banner';banner.innerHTML='<span>🔍 「'+filterNode+'」逾期未完成（'+filtered.length+'个项目）</span><button class="btn" onclick="filterNode=null;renderList()">✕ 清除</button>';container.appendChild(banner);}
@@ -391,6 +426,8 @@ function showPilotOverview() {
 }
 
 document.getElementById('searchInput').addEventListener('input',function(e){searchText=e.target.value;renderList();});
+document.getElementById('dateStart').addEventListener('change',function(e){dateStart=e.target.value;renderList();});
+document.getElementById('dateEnd').addEventListener('change',function(e){dateEnd=e.target.value;renderList();});
 
 // ==================== 加载 ====================
 function loadApp() {

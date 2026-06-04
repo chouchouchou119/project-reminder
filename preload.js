@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 路径
   getAppPaths: () => ipcRenderer.invoke('app:get-paths'),
 
+  // 公网同步
+  syncToCloud: () => ipcRenderer.invoke('sync:push'),
+
   // 通知
   showNotification: (title, body) => ipcRenderer.invoke('notification:show', title, body)
 });

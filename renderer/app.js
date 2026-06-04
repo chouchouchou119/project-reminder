@@ -6,26 +6,18 @@ var allProjects = [];
 var kpiData = null;
 var searchText = '';
 var currentFilterNode = null;
+var dateStart = '';
+var dateEnd = '';
 
 // ============================================================
-// 全局桥接函数 — 供 HTML 内联按钮调用
+// 全局桥接函数
 // ============================================================
 window._loadFromResult = function(result) {
   if (!result || !result.sheet1) return;
   allProjects = ExcelParser.parseExcelData(result.sheet1, result.sheet2);
   Sorter.sortProjects(allProjects, UIRenderer.getStarredList());
-  kpiData = KPICalculator.calculateKPI(allProjects);
-  currentFilterNode = null;
-  searchText = '';
-  document.getElementById('searchInput').value = '';
-  refreshUI();
+  recalcAndRender();
   updateFileInfo(result);
-};
-
-window._showPilotOverview = function() {
-  if (allProjects.length > 0) {
-    UIRenderer.renderPilotOverview(allProjects);
-  }
 };
 
 window._refreshData = async function() {
@@ -39,26 +31,61 @@ window._refreshData = async function() {
     if (result && !result.error && result.sheet1) {
       window._loadFromResult(result);
     }
-  } catch(e) {
-    console.error('刷新失败：', e.message);
-  }
+  } catch(e) { console.error(e); }
+};
+
+window._showPilotOverview = function() {
+  if (allProjects.length > 0) UIRenderer.renderPilotOverview(allProjects);
 };
 
 // ============================================================
-// UI 刷新
+// 动态KPI + 筛选
 // ============================================================
-function refreshUI() {
+function getFilteredProjects() {
+  var filtered = allProjects.slice();
+
+  // 搜索过滤
+  if (searchText && searchText.trim()) {
+    var kw = searchText.trim().toLowerCase();
+    filtered = filtered.filter(function(p) {
+      return p.name.toLowerCase().includes(kw) || p.series.toLowerCase().includes(kw) || p.person.toLowerCase().includes(kw);
+    });
+  }
+
+  // 逾期节点过滤
+  if (currentFilterNode) {
+    var today = dateEnd || new Date().toISOString().split('T')[0];
+    filtered = filtered.filter(function(p) {
+      return KPICalculator.isNodeTrulyDelayed(p, currentFilterNode, today);
+    });
+  }
+
+  // 日期范围过滤：只看计划日期在范围内的项目
+  if (dateStart || dateEnd) {
+    filtered = filtered.filter(function(p) {
+      var planDate = p.dates['送检开始计划'];
+      if (!planDate) return true; // 无计划日期，保留
+      if (dateStart && planDate < dateStart) return false;
+      if (dateEnd && planDate > dateEnd) return false;
+      return true;
+    });
+  }
+
+  return filtered;
+}
+
+function recalcAndRender() {
+  var filtered = getFilteredProjects();
+  var today = dateEnd || new Date().toISOString().split('T')[0];
+  kpiData = KPICalculator.calculateKPI(filtered, today);
   UIRenderer.renderKpiCards(kpiData);
-  UIRenderer.renderProjectList(allProjects, searchText, currentFilterNode);
-  document.getElementById('detailPanel').innerHTML =
-    '<div class="empty-state"><p>👈 点击左侧项目查看详情</p></div>';
+  UIRenderer.renderProjectList(allProjects, searchText, currentFilterNode, dateStart, dateEnd);
+  document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><p>👈 点击左侧项目查看详情</p></div>';
 }
 
 function updateFileInfo(result) {
   var el = document.getElementById('fileInfo');
-  if (result && result.fileName) {
-    el.textContent = '📄 ' + result.fileName;
-  }
+  if (result && result.fileName) el.textContent = '📄 ' + result.fileName;
 }
 
 // ============================================================
@@ -66,7 +93,19 @@ function updateFileInfo(result) {
 // ============================================================
 document.getElementById('searchInput').addEventListener('input', function(e) {
   searchText = e.target.value;
-  UIRenderer.renderProjectList(allProjects, searchText, currentFilterNode);
+  recalcAndRender();
+});
+
+// ============================================================
+// 日期筛选
+// ============================================================
+document.getElementById('dateStart').addEventListener('change', function(e) {
+  dateStart = e.target.value;
+  recalcAndRender();
+});
+document.getElementById('dateEnd').addEventListener('change', function(e) {
+  dateEnd = e.target.value;
+  recalcAndRender();
 });
 
 // ============================================================
@@ -75,28 +114,23 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
 document.addEventListener('data-refresh', function() {
   if (allProjects.length > 0) {
     Sorter.sortProjects(allProjects, UIRenderer.getStarredList());
-    refreshUI();
+    recalcAndRender();
   }
 });
 
 document.addEventListener('excel-updated', function(e) {
   var result = e.detail;
-  if (result && !result.error) {
-    window._loadFromResult(result);
-  }
+  if (result && !result.error) window._loadFromResult(result);
 });
 
 document.addEventListener('filter-node', function(e) {
   currentFilterNode = e.detail;
-  UIRenderer.renderProjectList(allProjects, searchText, currentFilterNode);
+  recalcAndRender();
 });
 
-// 文件变更监听
 if (window.electronAPI && window.electronAPI.onExcelChanged) {
   window.electronAPI.onExcelChanged(function(result) {
-    if (result && !result.error && result.sheet1) {
-      window._loadFromResult(result);
-    }
+    if (result && !result.error && result.sheet1) window._loadFromResult(result);
   });
 }
 
@@ -110,13 +144,8 @@ async function initApp() {
     var result = await window.electronAPI.loadExcel();
     if (result && !result.error && result.sheet1) {
       window._loadFromResult(result);
-    } else if (result && result.error) {
-      document.getElementById('projectList').innerHTML =
-        '<div class="empty-state"><p style="color:#E53935;">⚠️ ' + result.error + '</p></div>';
     }
-  } catch(e) {
-    console.error('初始化失败：', e.message);
-  }
+  } catch(e) { console.error(e); }
 }
 
 if (document.readyState === 'loading') {

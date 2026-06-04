@@ -66,7 +66,7 @@ function clearFilterNode() {
 // ============================================================
 // 项目列表
 // ============================================================
-function renderProjectList(projects, searchText, filterNode) {
+function renderProjectList(projects, searchText, filterNode, dateStart, dateEnd) {
   const container = document.getElementById('projectList');
   container.innerHTML = '';
 

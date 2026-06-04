@@ -11,7 +11,9 @@
     <h1>📊 产品项目进度提醒</h1>
     <div class="header-actions">
       <span id="fileInfo" class="file-info">未加载文件</span>
+      <span id="cloudUrl" style="font-size:12px;color:#1565C0;margin:0 8px;cursor:pointer" title="点击复制公网网址" onclick="navigator.clipboard.writeText('https://chouchouchou119.github.io/project-reminder/').then(function(){alert('已复制！')})">🌍 公网: chouchouchou119.github.io/project-reminder</span>
       <button id="btnOpenFile" class="btn btn-outline">📂 选择文件</button>
+      <button id="btnSync" class="btn btn-outline">☁️ 同步到公网</button>
       <button id="btnPilot" class="btn btn-outline">🔧 中试概览</button>
       <button id="btnWeb" class="btn btn-outline">🌐 生成网页版</button>
       <button id="btnRefresh" class="btn btn-outline">🔄 刷新</button>
@@ -26,100 +28,73 @@
     <button class="btn btn-sm" onclick="var u=document.getElementById('publicUrl');u.select();document.execCommand('copy');">📋</button>
   </div>
 
-  <section id="kpiSection">
+  <section id="kpiSection" style="flex-wrap:wrap">
     <div class="kpi-card kpi-main" id="kpiMain">
-      <div class="kpi-label">按时完成率</div>
+      <div class="kpi-label" style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <span>按时完成率</span>
+        <input type="date" id="dateStart" style="font-size:10px;padding:2px 4px;width:110px;border:1px solid #ddd;border-radius:3px" title="开始日期">
+        <span style="font-size:10px">~</span>
+        <input type="date" id="dateEnd" style="font-size:10px;padding:2px 4px;width:110px;border:1px solid #ddd;border-radius:3px" title="结束日期">
+      </div>
       <div class="kpi-value">--</div>
       <div class="kpi-sub">加载中...</div>
     </div>
     <div class="kpi-card" id="kpiCheckStart">
-      <div class="kpi-label">📋 送检开始</div>
-      <div class="kpi-value">--</div>
-      <div class="kpi-sub">逾期 / 总数</div>
+      <div class="kpi-label">📋 送检开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div>
     </div>
     <div class="kpi-card" id="kpiCheckEnd">
-      <div class="kpi-label">📋 送检结束</div>
-      <div class="kpi-value">--</div>
-      <div class="kpi-sub">逾期 / 总数</div>
+      <div class="kpi-label">📋 送检结束</div><div class="kpi-value">--</div><div class="kpi-sub"></div>
     </div>
     <div class="kpi-card" id="kpiPilotStart">
-      <div class="kpi-label">📋 中试开始</div>
-      <div class="kpi-value">--</div>
-      <div class="kpi-sub">逾期 / 总数</div>
+      <div class="kpi-label">📋 中试开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div>
     </div>
   </section>
 
   <main id="mainContent">
     <aside id="leftPanel">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
-      </div>
-      <div id="projectList" class="project-list">
-        <div class="empty-state"><p>📂 加载中...</p></div>
-      </div>
+      <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人..."></div>
+      <div id="projectList" class="project-list"><div class="empty-state"><p>📂 加载中...</p></div></div>
     </aside>
     <section id="rightPanel">
-      <div id="detailPanel" class="detail-panel">
-        <div class="empty-state"><p>👈 点击左侧项目查看详情</p></div>
-      </div>
+      <div id="detailPanel" class="detail-panel"><div class="empty-state"><p>👈 点击左侧项目查看详情</p></div></div>
     </section>
   </main>
 
-  <!-- 核心：按钮内联绑定（不依赖外部JS文件） -->
   <script>
-    // 按钮直接绑定 — 已验证可行
+    // 按钮直接绑定
     document.getElementById('btnOpenFile').onclick = async function() {
       try {
         var result = await window.electronAPI.openExcelFile();
-        if (result && !result.error && result.sheet1) {
-          // 触发全局数据刷新
-          window._loadFromResult(result);
-        }
-      } catch(e) {
-        alert('选择文件出错：' + e.message);
-      }
+        if (result && !result.error && result.sheet1) window._loadFromResult(result);
+      } catch(e) { alert('选择文件出错：' + e.message); }
     };
-
-    document.getElementById('btnRefresh').onclick = function() {
-      window._refreshData();
+    document.getElementById('btnRefresh').onclick = function() { window._refreshData(); };
+    document.getElementById('btnSync').onclick = async function() {
+      var btn = document.getElementById('btnSync'); btn.textContent = '⏳ 同步中...';
+      var result = await window.electronAPI.syncToCloud();
+      alert(result.success ? result.message : (result.error || '同步失败'));
+      btn.textContent = '☁️ 同步到公网';
     };
-
-    document.getElementById('btnPilot').onclick = function() {
-      window._showPilotOverview();
-    };
-
+    document.getElementById('btnPilot').onclick = function() { window._showPilotOverview(); };
     document.getElementById('btnWeb').onclick = async function() {
       var btn = document.getElementById('btnWeb');
       var banner = document.getElementById('webBanner');
-      var urlInput = document.getElementById('webUrl');
       if (btn.textContent.includes('停止')) {
         await window.electronAPI.stopWebServer();
-        btn.textContent = '🌐 生成网页版';
-        btn.style.background = '';
-        banner.style.display = 'none';
-        return;
+        btn.textContent = '🌐 生成网页版'; btn.style.background = '';
+        banner.style.display = 'none'; return;
       }
       btn.textContent = '⏳ 启动中...';
       var result = await window.electronAPI.startWebServer();
       if (result.running) {
-        btn.textContent = '🛑 停止网页版';
-        btn.style.background = '#FFCDD2';
+        btn.textContent = '🛑 停止网页版'; btn.style.background = '#FFCDD2';
         document.getElementById('webUrl').value = result.url;
         document.getElementById('publicUrl').value = result.publicUrl || '生成中...';
         banner.style.display = 'block';
-        // 等2秒再刷新一下公网地址
-        // 监听公网URL就绪事件
-        window.electronAPI.onPublicUrl(function(url) {
-          document.getElementById('publicUrl').value = url;
-        });
-      } else {
-        btn.textContent = '🌐 生成网页版';
-        alert('启动失败：' + (result.error || '未知错误'));
-      }
+        window.electronAPI.onPublicUrl(function(url) { document.getElementById('publicUrl').value = url; });
+      } else { btn.textContent = '🌐 生成网页版'; alert('启动失败：' + (result.error || '未知错误')); }
     };
   </script>
-
-  <!-- 外部数据处理脚本 -->
   <script src="excelParser.js"></script>
   <script src="kpiCalculator.js"></script>
   <script src="sorter.js"></script>
