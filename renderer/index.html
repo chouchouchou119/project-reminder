@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+  <title>产品项目进度提醒</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="header">
+    <h1>📊 产品项目进度提醒</h1>
+    <div class="header-actions">
+      <span id="fileInfo" class="file-info">未加载文件</span>
+      <button id="btnOpenFile" class="btn btn-outline">📂 选择文件</button>
+      <button id="btnPilot" class="btn btn-outline">🔧 中试概览</button>
+      <button id="btnWeb" class="btn btn-outline">🌐 生成网页版</button>
+      <button id="btnRefresh" class="btn btn-outline">🔄 刷新</button>
+    </div>
+  </header>
+  <div id="webBanner" style="display:none;background:#E8F5E9;padding:8px 24px;font-size:13px;text-align:center;border-bottom:1px solid #A5D6A7">
+    <span>🌐 局域网：</span>
+    <input id="webUrl" readonly style="width:240px;padding:4px 8px;border:1px solid #90CAF9;border-radius:4px;font-size:13px;text-align:center;background:#fff" onclick="this.select();document.execCommand('copy')" title="点击自动复制">
+    <button class="btn btn-sm" onclick="var u=document.getElementById('webUrl');u.select();document.execCommand('copy');">📋</button>
+    <span style="margin-left:16px">🌍 公网：</span>
+    <input id="publicUrl" readonly style="width:260px;padding:4px 8px;border:1px solid #FFB74D;border-radius:4px;font-size:13px;text-align:center;background:#FFF8E1" onclick="this.select();document.execCommand('copy')" title="点击自动复制">
+    <button class="btn btn-sm" onclick="var u=document.getElementById('publicUrl');u.select();document.execCommand('copy');">📋</button>
+  </div>
+
+  <section id="kpiSection">
+    <div class="kpi-card kpi-main" id="kpiMain">
+      <div class="kpi-label">按时完成率</div>
+      <div class="kpi-value">--</div>
+      <div class="kpi-sub">加载中...</div>
+    </div>
+    <div class="kpi-card" id="kpiCheckStart">
+      <div class="kpi-label">📋 送检开始</div>
+      <div class="kpi-value">--</div>
+      <div class="kpi-sub">逾期 / 总数</div>
+    </div>
+    <div class="kpi-card" id="kpiCheckEnd">
+      <div class="kpi-label">📋 送检结束</div>
+      <div class="kpi-value">--</div>
+      <div class="kpi-sub">逾期 / 总数</div>
+    </div>
+    <div class="kpi-card" id="kpiPilotStart">
+      <div class="kpi-label">📋 中试开始</div>
+      <div class="kpi-value">--</div>
+      <div class="kpi-sub">逾期 / 总数</div>
+    </div>
+  </section>
+
+  <main id="mainContent">
+    <aside id="leftPanel">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
+      </div>
+      <div id="projectList" class="project-list">
+        <div class="empty-state"><p>📂 加载中...</p></div>
+      </div>
+    </aside>
+    <section id="rightPanel">
+      <div id="detailPanel" class="detail-panel">
+        <div class="empty-state"><p>👈 点击左侧项目查看详情</p></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 核心：按钮内联绑定（不依赖外部JS文件） -->
+  <script>
+    // 按钮直接绑定 — 已验证可行
+    document.getElementById('btnOpenFile').onclick = async function() {
+      try {
+        var result = await window.electronAPI.openExcelFile();
+        if (result && !result.error && result.sheet1) {
+          // 触发全局数据刷新
+          window._loadFromResult(result);
+        }
+      } catch(e) {
+        alert('选择文件出错：' + e.message);
+      }
+    };
+
+    document.getElementById('btnRefresh').onclick = function() {
+      window._refreshData();
+    };
+
+    document.getElementById('btnPilot').onclick = function() {
+      window._showPilotOverview();
+    };
+
+    document.getElementById('btnWeb').onclick = async function() {
+      var btn = document.getElementById('btnWeb');
+      var banner = document.getElementById('webBanner');
+      var urlInput = document.getElementById('webUrl');
+      if (btn.textContent.includes('停止')) {
+        await window.electronAPI.stopWebServer();
+        btn.textContent = '🌐 生成网页版';
+        btn.style.background = '';
+        banner.style.display = 'none';
+        return;
+      }
+      btn.textContent = '⏳ 启动中...';
+      var result = await window.electronAPI.startWebServer();
+      if (result.running) {
+        btn.textContent = '🛑 停止网页版';
+        btn.style.background = '#FFCDD2';
+        document.getElementById('webUrl').value = result.url;
+        document.getElementById('publicUrl').value = result.publicUrl || '生成中...';
+        banner.style.display = 'block';
+        // 等2秒再刷新一下公网地址
+        // 监听公网URL就绪事件
+        window.electronAPI.onPublicUrl(function(url) {
+          document.getElementById('publicUrl').value = url;
+        });
+      } else {
+        btn.textContent = '🌐 生成网页版';
+        alert('启动失败：' + (result.error || '未知错误'));
+      }
+    };
+  </script>
+
+  <!-- 外部数据处理脚本 -->
+  <script src="excelParser.js"></script>
+  <script src="kpiCalculator.js"></script>
+  <script src="sorter.js"></script>
+  <script src="uiRenderer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

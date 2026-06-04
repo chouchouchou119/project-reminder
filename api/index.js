@@ -4,7 +4,10 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 
 const app = express();
-const DATA_FILE = path.join(__dirname, '..', 'data', '产品项目管理监控表20260529.xlsx');
+// 在Vercel上，文件在项目根目录
+const DATA_FILE = fs.existsSync(path.join(__dirname, '..', 'data', '产品项目管理监控表20260529.xlsx'))
+  ? path.join(__dirname, '..', 'data', '产品项目管理监控表20260529.xlsx')
+  : path.join(process.cwd(), 'data', '产品项目管理监控表20260529.xlsx');
 const WEB_PASSWORD = '119119';
 
 function serialToDateStr(serial) {
@@ -48,7 +51,13 @@ app.use((req, res, next) => {
 });
 
 // API
-app.get('/api/load', (req, res) => res.json(readExcel()));
+app.get('/api/load', (req, res) => {
+  const result = readExcel();
+  if (result.error) {
+    result._debug = { cwd: process.cwd(), dirname: __dirname, dataPath: DATA_FILE };
+  }
+  res.json(result);
+});
 
 // 主页
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
