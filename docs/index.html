@@ -96,6 +96,7 @@ body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3
       <input type="date" id="dateStart" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="开始日期">
       <span style="font-size:10px">~</span>
       <input type="date" id="dateEnd" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="结束日期">
+      <button onclick="document.getElementById('dateStart').value='';document.getElementById('dateEnd').value='';dateStart='';dateEnd='';renderList();" style="font-size:10px;padding:1px 6px;border:1px solid #ccc;border-radius:3px;background:#fff;cursor:pointer;color:#999" title="清除日期">✕</button>
     </div>
     <div class="kpi-value">--</div><div class="kpi-sub">加载中...</div>
   </div>
