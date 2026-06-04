@@ -59,4 +59,7 @@ app.get('/', (req, res) => {
 // 静态文件
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-module.exports = app;
+// Vercel serverless export
+module.exports = (req, res) => {
+  return app(req, res);
+};
