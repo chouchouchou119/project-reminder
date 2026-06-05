@@ -192,28 +192,35 @@ function setupIPC() {
       const projectDir = __dirname;
       const dataDir = path.join(projectDir, 'data');
 
-      // 找到最新的Excel文件
-      const latest = findLatestExcel(EXCEL_FOLDER) || (currentExcelPath ? { fullPath: currentExcelPath, name: path.basename(currentExcelPath) } : null);
+      // 优先使用当前加载的文件，其次找data文件夹中最新的
+      let latest;
+      if (currentExcelPath && fs.existsSync(currentExcelPath)) {
+        latest = { fullPath: currentExcelPath, name: path.basename(currentExcelPath) };
+        console.log('[同步] 使用当前加载的文件:', latest.name);
+      } else {
+        latest = findLatestExcel(EXCEL_FOLDER);
+        if (latest) console.log('[同步] 使用data文件夹中的文件:', latest.name);
+      }
       if (!latest) return { error: '没有可同步的Excel文件' };
 
       // 复制到 docs/ 文件夹（GitHub Pages用）
       const docsDir = path.join(projectDir, 'docs');
       if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir);
+      // 用固定文件名，GitHub Pages引用这个文件名
       const destName = '产品项目管理监控表20260529.xlsx';
       fs.copyFileSync(latest.fullPath, path.join(docsDir, destName));
       console.log('[同步] 已复制到docs/:', destName);
 
       // 也复制到 data/
-      if (path.dirname(latest.fullPath) !== dataDir) {
-        fs.copyFileSync(latest.fullPath, path.join(dataDir, destName));
-      }
+      fs.copyFileSync(latest.fullPath, path.join(dataDir, destName));
+      console.log('[同步] 已复制到data/:', destName);
 
       // Git add, commit, push
       const gitDir = path.join(projectDir, '.git');
       if (!fs.existsSync(gitDir)) return { error: 'Git 未初始化' };
 
-      execSync('git add data/', { cwd: projectDir, encoding: 'utf8' });
-      const status = execSync('git status --porcelain data/', { cwd: projectDir, encoding: 'utf8' });
+      execSync('git add data/ docs/', { cwd: projectDir, encoding: 'utf8' });
+      const status = execSync('git status --porcelain data/ docs/', { cwd: projectDir, encoding: 'utf8' });
       if (!status.trim()) return { success: true, message: '数据没有变化' };
 
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
