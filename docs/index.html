@@ -178,7 +178,7 @@ function daysBetween(d1, d2) {
 }
 
 // ==================== Excel解析 ====================
-var COL={NAME:4,MODEL:5,SERIAL:0,SERIES:1,PERSON:36,COMPLEXITY:35,DEV_METHOD:37,
+var COL={NAME:4,MODEL:5,SERIAL:0,SERIES:1,ALT_CODE:7,ALT_MODEL:8,PERSON:36,COMPLEXITY:35,DEV_METHOD:37,
   PLAN_CHECK_START:9,PLAN_CHECK_END:10,PLAN_PILOT_START:11,PLAN_PILOT_END:12,
   PLAN_PROD_START:13,PLAN_PROD_END:14,PLAN_LAUNCH:15,
   ACTUAL_CHECK_START:16,ACTUAL_CHECK_END:17,ACTUAL_PILOT_START:18,ACTUAL_PILOT_END:19,
@@ -238,7 +238,7 @@ function parseData(s1, s2) {
     var name = clean(s1[r][COL.NAME]); if (!name) continue;
     var p = {
       serialNo: clean(s1[r][COL.SERIAL]), series: clean(s1[r][COL.SERIES]),
-      name: name, model: clean(s1[r][COL.MODEL]), person: clean(s1[r][COL.PERSON]),
+      name: name, model: clean(s1[r][COL.MODEL]), altCode: clean(s1[r][COL.ALT_CODE]), altModel: clean(s1[r][COL.ALT_MODEL]), person: clean(s1[r][COL.PERSON]),
       complexity: clean(s1[r][COL.COMPLEXITY]), devMethod: clean(s1[r][COL.DEV_METHOD]),
       dates: {
         '送检开始计划':s1[r][COL.PLAN_CHECK_START]||'','送检结束计划':s1[r][COL.PLAN_CHECK_END]||'',
@@ -372,7 +372,7 @@ function renderDetail(p) {
   document.getElementById('pilotOverview').style.display='none';
   var html='<div class="detail-header"><h2>'+p.name+'</h2></div>';
   html+='<div class="detail-section"><h3>📋 基本信息</h3><div class="detail-grid">';
-  ['序号:'+p.serialNo,'系列:'+(p.series||'-'),'型号:'+(p.model||'-'),'负责人:<strong>'+(p.person||'-')+'</strong>','复杂度:'+(p.complexity||'-'),'当前阶段:'+(p.currentStage||'-'),'项目状态:'+(p.projectStatus||'进行中'),'下一步:'+(p.nextNode||'-')].forEach(function(s){var parts=s.split(':');html+='<span class="label">'+parts[0]+'</span><span class="value">'+parts[1]+'</span>';});
+  ['序号:'+p.serialNo,'系列:'+(p.series||'-'),'型号:'+(p.model||'-'),'替代编码:'+(p.altCode||'-'),'替代型号:'+(p.altModel||'-'),'负责人:<strong>'+(p.person||'-')+'</strong>','复杂度:'+(p.complexity||'-'),'当前阶段:'+(p.currentStage||'-'),'项目状态:'+(p.projectStatus||'进行中'),'下一步:'+(p.nextNode||'-')].forEach(function(s){var parts=s.split(':');html+='<span class="label">'+parts[0]+'</span><span class="value">'+parts[1]+'</span>';});
   html+='</div></div>';
   html+='<div class="detail-section"><h3>📅 关键节点进度</h3><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#E3F2FD"><th style="padding:6px 8px;text-align:left">节点</th><th style="padding:6px 8px;text-align:left">计划</th><th style="padding:6px 8px;text-align:left">实际</th><th style="padding:6px 8px;text-align:left">状态</th></tr>';
   [['送检开始','送检开始计划','送检开始实际'],['送检结束','送检结束计划','送检结束实际'],['中试开始','中试开始计划','中试开始实际'],['中试结束','中试结束计划','中试结束实际'],['批产开始','批产开始计划','批产开始实际'],['批产结束','批产结束计划','批产结束实际'],['上市','上市计划','上市实际']].forEach(function(n){

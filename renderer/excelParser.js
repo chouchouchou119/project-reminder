@@ -108,6 +108,8 @@ function parseSheet1(rawData) {
       series: clean(row[COL.SERIES]),
       name: name,
       model: clean(row[COL.MODEL]),
+      altCode: clean(row[COL.ALT_CODE]),
+      altModel: clean(row[COL.ALT_MODEL]),
       person: clean(row[COL.PERSON]),
       complexity: clean(row[COL.COMPLEXITY]),
       devMethod: clean(row[COL.DEV_METHOD]),

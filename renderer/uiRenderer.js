@@ -209,6 +209,8 @@ function renderDetail(project) {
         <span class="label">序号</span><span class="value">${project.serialNo}</span>
         <span class="label">系列</span><span class="value">${project.series || '-'}</span>
         <span class="label">型号</span><span class="value">${project.model || '-'}</span>
+        <span class="label">替代编码</span><span class="value">${project.altCode || '-'}</span>
+        <span class="label">替代型号</span><span class="value">${project.altModel || '-'}</span>
         <span class="label">负责人</span><span class="value"><strong>${project.person || '-'}</strong></span>
         <span class="label">复杂度</span><span class="value">${project.complexity || '-'}</span>
         <span class="label">开发方式</span><span class="value">${project.devMethod || '-'}</span>
