@@ -68,13 +68,15 @@ function getUrgencyClass(level) {
  */
 var STAGE_PLAN_MAP = {"送检":"送检开始计划","送检开始":"送检开始计划","送检结束":"送检结束计划","中试":"中试开始计划","中试开始":"中试开始计划","中试结束":"中试结束计划","上市":"上市计划"};
 
-// 阶段 → 计划日期映射
+// 阶段 → 计划日期 / 实际日期映射
 var STAGE_TO_PLAN = { '送检':'送检开始计划','送检开始':'送检开始计划','送检结束':'送检结束计划','中试':'中试开始计划','中试开始':'中试开始计划','中试结束':'中试结束计划','上市':'上市计划' };
+var STAGE_TO_ACTUAL = { '送检':'送检开始实际','送检开始':'送检开始实际','送检结束':'送检结束实际','中试':'中试开始实际','中试开始':'中试开始实际','中试结束':'中试结束实际','上市':'上市实际' };
 
 function sortProjects(projects, starredList, stageFilter) {
   const starredSet = new Set(starredList.map(String));
   const today = new Date().toISOString().split('T')[0];
   const planKey = STAGE_TO_PLAN[stageFilter] || null;
+  const actualKey = STAGE_TO_ACTUAL[stageFilter] || null;
 
   for (const p of projects) {
     p.isStarred = starredSet.has(String(p.serialNo));
@@ -82,10 +84,15 @@ function sortProjects(projects, starredList, stageFilter) {
     // 按阶段筛选对应的计划日期计算紧急程度
     var urgency;
     if (planKey && p.dates[planKey]) {
-      const days = window.KPICalculator ? window.KPICalculator.daysBetween(today, p.dates[planKey]) : 0;
-      if (days < 0) urgency = { days: days, label: '超期' + Math.abs(days) + '天' };
-      else if (days > 0) urgency = { days: days, label: '还有' + days + '天' };
-      else urgency = { days: Infinity, label: '今天' };
+      // 如果该阶段已有实际完成日期 → 已完成
+      if (actualKey && p.dates[actualKey]) {
+        urgency = { days: Infinity, label: '已完成' };
+      } else {
+        const days = window.KPICalculator ? window.KPICalculator.daysBetween(today, p.dates[planKey]) : 0;
+        if (days < 0) urgency = { days: days, label: '超期' + Math.abs(days) + '天' };
+        else if (days > 0) urgency = { days: days, label: '还有' + days + '天' };
+        else urgency = { days: Infinity, label: '今天到期' };
+      }
     } else {
       urgency = extractDaysFromNode(p.nextNode);
     }
