@@ -53,7 +53,15 @@
 
   <main id="mainContent">
     <aside id="leftPanel">
-      <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人..."></div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
+        <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap" id="stageFilters">
+          <button class="stage-chip active" data-stage="">全部</button>
+          <button class="stage-chip" data-stage="送检">送检</button>
+          <button class="stage-chip" data-stage="中试">中试</button>
+          <button class="stage-chip" data-stage="批产">批产</button>
+        </div>
+      </div>
       <div id="projectList" class="project-list"><div class="empty-state"><p>📂 加载中...</p></div></div>
     </aside>
     <section id="rightPanel">
@@ -76,6 +84,15 @@
       alert(result.success ? result.message : (result.error || '同步失败'));
       btn.textContent = '☁️ 同步到公网';
     };
+    // 阶段筛选
+    document.getElementById('stageFilters').addEventListener('click', function(e) {
+      if (e.target.classList.contains('stage-chip')) {
+        document.querySelectorAll('#stageFilters .stage-chip').forEach(function(c) { c.classList.remove('active'); });
+        e.target.classList.add('active');
+        if (typeof window._setStageFilter === 'function') window._setStageFilter(e.target.getAttribute('data-stage'));
+      }
+    });
+
     document.getElementById('btnPilot').onclick = function() { window._showPilotOverview(); };
     document.getElementById('btnWeb').onclick = async function() {
       var btn = document.getElementById('btnWeb');

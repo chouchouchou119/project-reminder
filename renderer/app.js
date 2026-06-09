@@ -8,6 +8,9 @@ var searchText = '';
 var currentFilterNode = null;
 var dateStart = '';
 var dateEnd = '';
+var stageFilter = '';
+
+window._setStageFilter = function(s) { stageFilter = s; recalcAndRender(); };
 
 // ============================================================
 // 全局桥接函数
@@ -50,6 +53,11 @@ function getFilteredProjects() {
     filtered = filtered.filter(function(p) {
       return p.name.toLowerCase().includes(kw) || p.series.toLowerCase().includes(kw) || p.person.toLowerCase().includes(kw);
     });
+  }
+
+  // 阶段过滤
+  if (stageFilter) {
+    filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
   }
 
   // 逾期节点过滤
