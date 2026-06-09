@@ -95,6 +95,12 @@
       }
     });
 
+    // 中试概览按钮筛选
+    window._setPilotFilter = function(aspect) {
+      window._pilotAspect = aspect;
+      window._showPilotOverview();
+    };
+
     document.getElementById('btnPilot').onclick = function() { window._showPilotOverview(); };
     document.getElementById('btnWeb').onclick = async function() {
       var btn = document.getElementById('btnWeb');

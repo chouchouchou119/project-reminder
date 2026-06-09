@@ -111,7 +111,25 @@ function renderProjectList(projects, searchText, filterNode, dateStart, dateEnd)
     container.appendChild(filterBanner);
   }
 
-  const groups = Sorter.groupByUrgency(filtered);
+  // 项目进度摘要
+  var overdueCount = 0, warningCount = 0, normalCount = 0, completedCount = 0;
+  filtered.forEach(function(p) {
+    if (p._urgencyLevel === 'overdue-severe' || p._urgencyLevel === 'overdue') overdueCount++;
+    else if (p._urgencyLevel === 'warning' || p._urgencyLevel === 'soon') warningCount++;
+    else if (p._urgencyLevel === 'completed') completedCount++;
+    else normalCount++;
+  });
+  var summaryDiv = document.createElement('div');
+  summaryDiv.style.cssText = 'padding:8px 16px;font-size:12px;background:#F5F5F5;border-bottom:1px solid #E0E0E0';
+  summaryDiv.innerHTML = '共 <b>' + filtered.length + '</b> 个项目' +
+    (overdueCount > 0 ? '，<b style=\"color:#E53935\">超期 ' + overdueCount + '</b> 个' : '') +
+    (warningCount > 0 ? '，<b style=\"color:#F57C00\">即将到期 ' + warningCount + '</b> 个' : '') +
+    (normalCount > 0 ? '，<b style=\"color:#43A047\">正常 ' + normalCount + '</b> 个' : '') +
+    (completedCount > 0 ? '，<b style=\"color:#9E9E9E\">完成 ' + completedCount + '</b> 个' : '') +
+    (stageFilter ? ' <span style=\"color:#1565C0\">| 筛选: ' + stageFilter + '</span>' : '');
+  container.appendChild(summaryDiv);
+
+  var groups = Sorter.groupByUrgency(filtered);
 
   for (const group of groups) {
     if (group.items.length === 0) continue;
@@ -462,7 +480,9 @@ async function markCompleted(project) {
 // ============================================================
 var pilotFilterAspect = '';
 
-function renderPilotOverview(projects) {
+function renderPilotOverview(projects, filterAspect) {
+  if (typeof filterAspect !== 'undefined') pilotFilterAspect = filterAspect;
+  else if (typeof window._pilotAspect !== 'undefined') pilotFilterAspect = window._pilotAspect;
   const panel = document.getElementById('detailPanel');
   const pilotProjects = projects.filter(function(p) { return p.pilotDetail; });
 
@@ -474,50 +494,91 @@ function renderPilotOverview(projects) {
   var today = new Date();
   var html = '<div style="padding:16px;"><h2 style="margin-bottom:12px;">🔧 中试进度概览</h2>';
 
-  // 环节筛选按钮
+  // 环节筛选按钮（按中试流程顺序）
   var aspects = [
-    {key:'',label:'全部'},{key:'archive',label:'归档'},{key:'material',label:'物料'},
-    {key:'fixture',label:'治具'},{key:'production',label:'生产'},{key:'review',label:'评审'},{key:'conclusion',label:'结论'}
+    {key:'',label:'全部'},{key:'archive',label:'① 归档'},{key:'material',label:'② 物料'},
+    {key:'production',label:'③ 生产'},{key:'review',label:'④ 评审'}
   ];
   html += '<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
   aspects.forEach(function(a) {
     var isOn = pilotFilterAspect === a.key;
-    html += '<button class="pilot-chip' + (isOn ? ' on' : '') + '" onclick="window._setPilotFilter(\'' + a.key + '\')">' + a.label + '</button>';
+    html += '<span class="pilot-chip' + (isOn ? ' on' : '') + '" data-aspect="' + a.key + '" style="display:inline-block;cursor:pointer">' + a.label + '</span>';
   });
-  html += '</div><p style="font-size:12px;color:#757575;margin-bottom:16px;">共 ' + pilotProjects.length + ' 个项目</p>';
+  html += '</div>';
 
-  for (var i = 0; i < pilotProjects.length; i++) {
-    var p = pilotProjects[i];
+  // 先计算筛选后的统计（该步骤未完成，且前面步骤都已完成）
+  var filteredList = [];
+  for (var fi = 0; fi < pilotProjects.length; fi++) {
+    var pp = pilotProjects[fi], dd = pp.pilotDetail;
+    var prodDone2 = dd.productionComplete === '是';
+    var archDone2 = dd.archiveComplete === '是' || prodDone2;
+    var matDone2 = dd.materialComplete === '是' || prodDone2;
+    var reviewDone2 = !!dd.actualReview;
+
+    if (pilotFilterAspect === 'archive') {
+      if (archDone2) continue; // 归档已完成，跳过
+    } else if (pilotFilterAspect === 'material') {
+      if (matDone2) continue; // 物料已完成，跳过
+      if (!archDone2) continue; // 归档还没完成，瓶颈在归档
+    } else if (pilotFilterAspect === 'production') {
+      if (prodDone2) continue;
+      if (!archDone2 || !matDone2) continue; // 前面没完成，瓶颈在前
+    } else if (pilotFilterAspect === 'review') {
+      if (reviewDone2) continue;
+      if (!archDone2 || !matDone2 || !prodDone2) continue;
+    }
+    filteredList.push(pp);
+  }
+  var totalCount = filteredList.length;
+  var doneCount = 0, notDoneCount = 0;
+  var warnList = [];
+  filteredList.forEach(function(pp) {
+    var dd = pp.pilotDetail;
+    var allDone = dd.archiveComplete === '是' && dd.materialComplete === '是' && dd.productionComplete === '是' && !!dd.actualReview;
+    if (allDone) doneCount++; else notDoneCount++;
+    if (!allDone) {
+      var step = '';
+      if (dd.archiveComplete !== '是') step = '归档';
+      else if (dd.materialComplete !== '是') step = '物料齐套';
+      else if (dd.productionComplete !== '是') step = '生产';
+      else if (!dd.actualReview) step = '评审';
+      if (step) warnList.push(pp.name + '→' + step);
+    }
+  });
+
+  html += '<div style="font-size:12px;color:#616161;margin-bottom:12px;background:#F5F5F5;padding:8px 12px;border-radius:6px">';
+  if (pilotFilterAspect) {
+    html += '未完成 <b style=\"color:#E53935\">' + totalCount + '</b> 个';
+  } else {
+    html += '共 <b>' + totalCount + '</b> 个项目，已完成 <b style=\"color:#43A047\">' + doneCount + '</b> 个，未完成 <b style=\"color:#E53935\">' + notDoneCount + '</b> 个';
+  }
+  if (warnList.length > 0) {
+    html += '<br>⚠️ 近期需提醒：' + warnList.slice(0, 5).join('、') + (warnList.length > 5 ? '等' + warnList.length + '项' : '');
+  }
+  html += '</div>';
+
+  for (var i = 0; i < filteredList.length; i++) {
+    var p = filteredList[i];
     var d = p.pilotDetail;
 
-    var isAspectMatch = !pilotFilterAspect;
+    // 各步骤完成情况：后续步骤完成则前面全部视为完成
+    var prodDone = d.productionComplete === '是';
+    var reviewDone = !!d.actualReview;
+    var archDone = d.archiveComplete === '是' || prodDone;
+    var matDone = d.materialComplete === '是' || prodDone;
+
+    // 按环节筛选：只显示该环节未完成的项目
+    if (pilotFilterAspect === 'archive' && archDone) continue;
+    if (pilotFilterAspect === 'material' && matDone) continue;
+    if (pilotFilterAspect === 'production' && prodDone) continue;
+    if (pilotFilterAspect === 'review' && reviewDone) continue;
     var chaseItems = [];
 
-    if (d.archiveComplete === '否') { chaseItems.push('研发归档→薛涵月（档案室）'); if (pilotFilterAspect === 'archive') isAspectMatch = true; }
-    else if (d.archiveComplete === '是' && pilotFilterAspect === 'archive') isAspectMatch = true;
-
-    if (d.materialComplete === '否') { chaseItems.push('物料齐套→生产计划'); if (pilotFilterAspect === 'material') isAspectMatch = true; }
-    else if (d.materialComplete === '是' && pilotFilterAspect === 'material') isAspectMatch = true;
-
-    if (!d.actualFixture && d.planFixture) {
-      var fd = Math.round((new Date(d.planFixture) - today) / 86400000);
-      if (fd < 0) chaseItems.push('治具→邵部长（工艺）超期' + Math.abs(fd) + '天');
-      else if (fd <= 7) chaseItems.push('治具→邵部长（工艺）还有' + fd + '天');
-      if (pilotFilterAspect === 'fixture') isAspectMatch = true;
-    } else if (d.actualFixture && pilotFilterAspect === 'fixture') isAspectMatch = true;
-
-    if (d.productionComplete === '否') { chaseItems.push('中试生产→孙登琨（生产计划）'); if (pilotFilterAspect === 'production') isAspectMatch = true; }
-    else if (d.productionComplete === '是' && pilotFilterAspect === 'production') isAspectMatch = true;
-
-    if (!d.actualReview) { chaseItems.push('中试评审→姜雨豪（研发管理）'); if (pilotFilterAspect === 'review') isAspectMatch = true; }
-    else if (d.actualReview && pilotFilterAspect === 'review') isAspectMatch = true;
-
-    if (!d.pilotConclusion) { chaseItems.push('中试结论→王国燕/郭嘉（项目计划）'); if (pilotFilterAspect === 'conclusion') isAspectMatch = true; }
-    else if (d.pilotConclusion && pilotFilterAspect === 'conclusion') isAspectMatch = true;
-
-    if (d.postConclusionIssues && !d.actualClosure) chaseItems.push('问题闭环→郭嘉');
-
-    if (!isAspectMatch) continue;
+    if (!archDone) chaseItems.push('研发归档→薛涵月（档案室）');
+    if (!matDone) chaseItems.push('物料齐套→生产计划');
+    if (!prodDone) chaseItems.push('中试生产→孙登琨（生产计划）');
+    if (!reviewDone) chaseItems.push('中试评审→姜雨豪（研发管理）');
+    if (!reviewDone && archDone && matDone && prodDone) chaseItems.push('结论→王国燕/郭嘉（项目计划）⚠️前序完成，需催开评审会');
 
     var urgencyBadge = chaseItems.length > 0
       ? '<span style="background:#E53935;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">' + chaseItems.length + '项待催</span>'
@@ -534,22 +595,15 @@ function renderPilotOverview(projects) {
       html += '</div>';
     }
     html += '<div style="margin-top:8px;font-size:11px;color:#616161;display:flex;gap:12px;flex-wrap:wrap;">';
-    html += '<span>归档:' + (d.archiveComplete === '是' ? '✅' : '❌') + '</span>';
-    html += '<span>物料:' + (d.materialComplete === '是' ? '✅' : '❌') + '</span>';
-    html += '<span>治具:' + (d.actualFixture ? '✅' : '⏳') + '</span>';
-    html += '<span>生产:' + (d.productionComplete === '是' ? '✅' : '❌') + '</span>';
-    html += '<span>评审:' + (d.actualReview ? '✅' : '⏳') + '</span>';
-    html += '<span>结论:' + (d.pilotConclusion || '⏳') + '</span>';
+    html += '<span>①归档:' + (archDone ? '✅' : '❌') + '</span>';
+    html += '<span>②物料:' + (matDone ? '✅' : '❌') + '</span>';
+    html += '<span>③生产:' + (prodDone ? '✅' : '❌') + '</span>';
+    html += '<span>④评审:' + (reviewDone ? '✅' : '⏳') + '</span>';
     html += '</div></div>';
   }
   html += '</div>';
   panel.innerHTML = html;
 }
-
-window._setPilotFilter = function(aspect) {
-  pilotFilterAspect = aspect;
-  document.dispatchEvent(new CustomEvent('pilot-filter-changed'));
-};
 
 window.UIRenderer = {
   renderKpiCards,
@@ -560,6 +614,5 @@ window.UIRenderer = {
   setStarredList,
   toggleStar,
   filterByDelayedNode,
-  clearFilterNode,
-  _setPilotFilter: window._setPilotFilter
+  clearFilterNode
 };

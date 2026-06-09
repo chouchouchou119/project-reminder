@@ -38,7 +38,7 @@ window._refreshData = async function() {
 };
 
 window._showPilotOverview = function() {
-  if (allProjects.length > 0) UIRenderer.renderPilotOverview(allProjects);
+  if (allProjects.length > 0) UIRenderer.renderPilotOverview(allProjects, window._pilotAspect);
 };
 
 // ============================================================
@@ -91,6 +91,7 @@ function getFilteredProjects() {
 }
 
 function recalcAndRender() {
+  Sorter.sortProjects(allProjects, UIRenderer.getStarredList(), stageFilter);
   var filtered = getFilteredProjects();
   var today = dateEnd || new Date().toISOString().split('T')[0];
   kpiData = KPICalculator.calculateKPI(filtered, today);
@@ -103,6 +104,21 @@ function updateFileInfo(result) {
   var el = document.getElementById('fileInfo');
   if (result && result.fileName) el.textContent = '📄 ' + result.fileName;
 }
+
+// ============================================================
+// 中试概览按钮点击（事件委托）
+// ============================================================
+document.getElementById('detailPanel').addEventListener('click', function(e) {
+  var t = e.target;
+  while (t && t !== document.body) {
+    if (t.getAttribute && t.getAttribute('data-aspect') !== null) {
+      window._pilotAspect = t.getAttribute('data-aspect');
+      UIRenderer.renderPilotOverview(allProjects, window._pilotAspect);
+      return;
+    }
+    t = t.parentElement;
+  }
+});
 
 // ============================================================
 // 搜索
