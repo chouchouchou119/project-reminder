@@ -219,9 +219,8 @@ function setupIPC() {
       const gitDir = path.join(projectDir, '.git');
       if (!fs.existsSync(gitDir)) return { error: 'Git 未初始化' };
 
-      execSync('git add data/ docs/', { cwd: projectDir, encoding: 'utf8' });
-      const status = execSync('git status --porcelain data/ docs/', { cwd: projectDir, encoding: 'utf8' });
-      if (!status.trim()) return { success: true, message: '数据没有变化' };
+      execSync('git add -A data/ docs/', { cwd: projectDir, encoding: 'utf8' });
+      // 强制提交，即使git没检测到变化也尝试（文件可能被覆盖但内容相同）
 
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       execSync('git commit -m "数据更新 ' + dateStr + '"', { cwd: projectDir, encoding: 'utf8' });
