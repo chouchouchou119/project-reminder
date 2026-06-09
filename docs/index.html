@@ -377,6 +377,16 @@ function renderList() {
   var container=document.getElementById('projectList');
   var filtered=getFilteredProjects();
   container.innerHTML='';
+  var ov=0,wn=0,nm=0,cp=0;
+  filtered.forEach(function(p){
+    if(p._level==='overdue-severe'||p._level==='overdue')ov++;
+    else if(p._level==='warning'||p._level==='soon')wn++;
+    else if(p._level==='completed')cp++;else nm++;
+  });
+  var sd=document.createElement('div');
+  sd.style.cssText='padding:8px 16px;font-size:12px;background:#F5F5F5;border-bottom:1px solid #E0E0E0';
+  sd.innerHTML='共 <b>'+filtered.length+'</b> 个项目'+(ov>0?'，<b style="color:#E53935">超期 '+ov+'</b> 个':'')+(wn>0?'，<b style="color:#F57C00">即将到期 '+wn+'</b> 个':'')+(nm>0?'，<b style="color:#43A047">正常 '+nm+'</b> 个':'')+(cp>0?'，<b style="color:#9E9E9E">完成 '+cp+'</b> 个':'')+(stageFilter?' <span style="color:#1565C0">| '+stageFilter+'</span>':'');
+  container.appendChild(sd);
   if(filtered.length===0){container.innerHTML='<div class="empty-state"><p>没有匹配的项目</p>'+(filterNode?'<button class="btn" onclick="filterNode=null;renderList()">← 返回</button>':'')+'</div>';return;}
   if(filterNode){var banner=document.createElement('div');banner.className='filter-banner';banner.innerHTML='<span>🔍 「'+filterNode+'」逾期未完成（'+filtered.length+'个项目）</span><button class="btn" onclick="filterNode=null;renderList()">✕ 清除</button>';container.appendChild(banner);}
   var groups={'overdue-severe':{label:'🔴 严重超期',items:[],cls:'overdue-severe'},'overdue':{label:'🟠 已超期',items:[],cls:'overdue'},'warning':{label:'🟡 即将到期',items:[],cls:'warning'},'soon':{label:'🟢 近期关注',items:[],cls:'soon'},'normal':{label:'🟢 正常',items:[],cls:'soon'},'completed':{label:'⚪ 已完成',items:[],cls:'completed'}};
@@ -434,46 +444,42 @@ function showPilotOverview() {
   var pp=allProjects.filter(function(p){return p.pilotDetail;});
   if(pp.length===0){container.innerHTML='<div class="empty-state"><p>没有中试项目</p></div>';return;}
   var today=new Date();
-
-  // 环节筛选按钮
-  var aspects = [
-    {key:'',label:'全部'},{key:'archive',label:'归档'},{key:'material',label:'物料'},
-    {key:'fixture',label:'治具'},{key:'production',label:'生产'},{key:'review',label:'评审'},{key:'conclusion',label:'结论'}
-  ];
+  var aspects=[{key:'',label:'全部'},{key:'archive',label:'① 归档'},{key:'material',label:'② 物料'},{key:'production',label:'③ 生产'},{key:'review',label:'④ 评审'}];
   var html='<div style="padding:16px"><h2>🔧 中试进度概览</h2>';
   html+='<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
-  aspects.forEach(function(a){
-    var isOn = pilotFilterAspect === a.key;
-    html+='<button class="pilot-chip'+(isOn?' on':'')+'" onclick="pilotFilterAspect=\''+a.key+'\';showPilotOverview()">'+a.label+'</button>';
-  });
-  html+='</div><p style="font-size:12px;color:#757575;margin-bottom:16px">共 '+pp.length+' 个项目</p>';
-
+  aspects.forEach(function(a){var isOn=pilotFilterAspect===a.key;html+='<span class="pilot-chip'+(isOn?' on':'')+'" data-aspect="'+a.key+'" style="display:inline-block;cursor:pointer">'+a.label+'</span>';});
+  // Pre-filter with bottleneck logic
+  var filteredList=[];
   pp.forEach(function(p){
-    var d=p.pilotDetail,chase=[];
-    var isAspectMatch = !pilotFilterAspect; // 全部时匹配
-
-    if(d.archiveComplete==='否'){chase.push('归档→薛涵月'); if(pilotFilterAspect==='archive') isAspectMatch=true;}
-    else if(d.archiveComplete==='是'&&pilotFilterAspect==='archive') isAspectMatch=true;
-
-    if(d.materialComplete==='否'){chase.push('物料→生产计划'); if(pilotFilterAspect==='material') isAspectMatch=true;}
-    else if(d.materialComplete==='是'&&pilotFilterAspect==='material') isAspectMatch=true;
-
-    if(!d.actualFixture&&d.planFixture){var fd=daysBetween(d.planFixture,today.toISOString().split('T')[0]);if(fd<0)chase.push('治具→邵部长 超期'+Math.abs(fd)+'天');else if(fd<=7)chase.push('治具→邵部长 还有'+fd+'天');if(pilotFilterAspect==='fixture') isAspectMatch=true;}
-    else if(d.actualFixture&&pilotFilterAspect==='fixture') isAspectMatch=true;
-
-    if(d.productionComplete==='否'){chase.push('生产→孙登琨'); if(pilotFilterAspect==='production') isAspectMatch=true;}
-    else if(d.productionComplete==='是'&&pilotFilterAspect==='production') isAspectMatch=true;
-
-    if(!d.actualReview){chase.push('评审→姜雨豪'); if(pilotFilterAspect==='review') isAspectMatch=true;}
-    else if(d.actualReview&&pilotFilterAspect==='review') isAspectMatch=true;
-
-    if(!d.pilotConclusion){chase.push('结论→王国燕/郭嘉'); if(pilotFilterAspect==='conclusion') isAspectMatch=true;}
-    else if(d.pilotConclusion&&pilotFilterAspect==='conclusion') isAspectMatch=true;
-
-    if(d.postConclusionIssues&&!d.actualClosure)chase.push('闭环→郭嘉');
-
-    if(!isAspectMatch) return;
-
+    var d=p.pilotDetail, prodDone2=d.productionComplete==='是';
+    var archDone2=d.archiveComplete==='是'||prodDone2, matDone2=d.materialComplete==='是'||prodDone2, reviewDone2=!!d.actualReview;
+    if(pilotFilterAspect==='archive'&&archDone2)return;
+    if(pilotFilterAspect==='material'){if(matDone2||!archDone2)return;}
+    if(pilotFilterAspect==='production'){if(prodDone2||!archDone2||!matDone2)return;}
+    if(pilotFilterAspect==='review'){if(reviewDone2||!archDone2||!matDone2||!prodDone2)return;}
+    filteredList.push(p);
+  });
+  // Summary
+  var totalCount=filteredList.length,doneCount=0,notDoneCount=0,warnArr=[];
+  filteredList.forEach(function(p){
+    var d=p.pilotDetail,allDone=d.archiveComplete==='是'&&d.materialComplete==='是'&&d.productionComplete==='是'&&!!d.actualReview;
+    if(allDone)doneCount++;else{notDoneCount++;var s='';if(d.archiveComplete!=='是')s='归档';else if(d.materialComplete!=='是')s='物料齐套';else if(d.productionComplete!=='是')s='生产';else if(!d.actualReview)s='评审';if(s)warnArr.push(p.name+'→'+s);}
+  });
+  html+='</div>';
+  html+='<div style="font-size:12px;color:#616161;margin-bottom:12px;background:#F5F5F5;padding:8px 12px;border-radius:6px">';
+  if(pilotFilterAspect)html+='未完成 <b style="color:#E53935">'+totalCount+'</b> 个';
+  else html+='共 <b>'+totalCount+'</b> 个项目，已完成 <b style="color:#43A047">'+doneCount+'</b> 个，未完成 <b style="color:#E53935">'+notDoneCount+'</b> 个';
+  if(warnArr.length>0)html+='<br>⚠️ 近期需提醒：'+warnArr.slice(0,5).join('、')+(warnArr.length>5?'等'+warnArr.length+'项':'');
+  html+='</div>';
+  // Render filtered projects
+  filteredList.forEach(function(p){
+    var d=p.pilotDetail, prodDone=d.productionComplete==='是',reviewDone=!!d.actualReview;
+    var archDone=d.archiveComplete==='是'||prodDone,matDone=d.materialComplete==='是'||prodDone;
+    var chase=[];
+    if(!archDone)chase.push('①归档→薛涵月');
+    if(!matDone)chase.push('②物料→生产计划');
+    if(!prodDone)chase.push('③生产→孙登琨');
+    if(!reviewDone){if(archDone&&matDone&&prodDone)chase.push('④评审→姜雨豪 ⚠️前序完成需催开评审会');else chase.push('④评审→姜雨豪');}
     html+='<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;padding:12px;margin-bottom:8px">';
     html+='<div style="display:flex;justify-content:space-between"><strong>'+p.name+'</strong><span style="background:'+(chase.length>0?'#E53935':'#E8F5E9')+';color:'+(chase.length>0?'#fff':'#2E7D32')+';padding:2px 8px;border-radius:10px;font-size:11px">'+(chase.length>0?chase.length+'项待催':'正常')+'</span></div>';
     html+='<div style="font-size:11px;color:#757575;margin:4px 0">👤 '+(p.person||'-')+' | 📦 '+(p.series||'-')+'</div>';
