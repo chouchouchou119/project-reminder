@@ -65,6 +65,12 @@ body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3
 .login-card button{margin-top:12px;padding:10px 32px;background:#1565C0;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
 .login-card button:hover{background:#0D47A1}
 .err{color:#E53935;margin-top:8px}
+.stage-chip{padding:3px 10px;border:1px solid #90CAF9;border-radius:12px;font-size:11px;cursor:pointer;background:#fff;color:#1565C0;transition:all .15s}
+.stage-chip:hover{background:#E3F2FD}
+.stage-chip.active{background:#1565C0;color:#fff;border-color:#1565C0}
+.pilot-chip{padding:2px 8px;border:1px solid #BDBDBD;border-radius:10px;font-size:10px;cursor:pointer;background:#fff;color:#757575;transition:all .15s}
+.pilot-chip:hover{background:#f5f5f5}
+.pilot-chip.on{background:#FFF3E0;color:#E65100;border-color:#FFB74D}
 </style>
 </head>
 <body>
@@ -106,7 +112,15 @@ body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3
 </section>
 <main id="mainContent">
   <aside id="leftPanel">
-    <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人..."></div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
+      <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap" id="stageFilters">
+        <button class="stage-chip active" data-stage="">全部</button>
+        <button class="stage-chip" data-stage="送检">送检</button>
+        <button class="stage-chip" data-stage="中试">中试</button>
+        <button class="stage-chip" data-stage="批产">批产</button>
+      </div>
+    </div>
     <div id="projectList"><div class="empty-state"><p>📂 加载中...</p></div></div>
   </aside>
   <section id="rightPanel">
@@ -140,7 +154,8 @@ if (document.cookie.indexOf('key=' + WEB_PWD) >= 0) {
 
 // ==================== 数据 ====================
 var allProjects = [], kpiData = null, searchText = '', filterNode = null, selectedSerial = null;
-var dateStart = '', dateEnd = '';
+var dateStart = '', dateEnd = '', stageFilter = '';
+var pilotFilterAspect = ''; // 中试概览的环节筛选
 
 function getFilteredProjects() {
   var filtered = allProjects.slice();
@@ -151,6 +166,9 @@ function getFilteredProjects() {
   if (filterNode) {
     var today = dateEnd || new Date().toISOString().split('T')[0];
     filtered = filtered.filter(function(p) { return isNodeDelayed(p, filterNode, today); });
+  }
+  if (stageFilter) {
+    filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
   }
   if (dateStart || dateEnd) {
     filtered = filtered.filter(function(p) {
@@ -406,16 +424,47 @@ function showPilotOverview() {
   var container=document.getElementById('pilotOverview');container.style.display='block';
   var pp=allProjects.filter(function(p){return p.pilotDetail;});
   if(pp.length===0){container.innerHTML='<div class="empty-state"><p>没有中试项目</p></div>';return;}
-  var today=new Date(),html='<div style="padding:16px"><h2>🔧 中试进度概览</h2><p style="font-size:12px;color:#757575;margin-bottom:16px">共 '+pp.length+' 个项目</p>';
+  var today=new Date();
+
+  // 环节筛选按钮
+  var aspects = [
+    {key:'',label:'全部'},{key:'archive',label:'归档'},{key:'material',label:'物料'},
+    {key:'fixture',label:'治具'},{key:'production',label:'生产'},{key:'review',label:'评审'},{key:'conclusion',label:'结论'}
+  ];
+  var html='<div style="padding:16px"><h2>🔧 中试进度概览</h2>';
+  html+='<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
+  aspects.forEach(function(a){
+    var isOn = pilotFilterAspect === a.key;
+    html+='<button class="pilot-chip'+(isOn?' on':'')+'" onclick="pilotFilterAspect=\''+a.key+'\';showPilotOverview()">'+a.label+'</button>';
+  });
+  html+='</div><p style="font-size:12px;color:#757575;margin-bottom:16px">共 '+pp.length+' 个项目</p>';
+
   pp.forEach(function(p){
     var d=p.pilotDetail,chase=[];
-    if(d.archiveComplete==='否')chase.push('归档→薛涵月');
-    if(d.materialComplete==='否')chase.push('物料→生产计划');
-    if(!d.actualFixture&&d.planFixture){var fd=daysBetween(d.planFixture,today.toISOString().split('T')[0]);if(fd<0)chase.push('治具→邵部长 超期'+Math.abs(fd)+'天');else if(fd<=7)chase.push('治具→邵部长 还有'+fd+'天');}
-    if(d.productionComplete==='否')chase.push('生产→孙登琨');
-    if(!d.actualReview)chase.push('评审→姜雨豪');
-    if(!d.pilotConclusion)chase.push('结论→王国燕/郭嘉');
+    var isAspectMatch = !pilotFilterAspect; // 全部时匹配
+
+    if(d.archiveComplete==='否'){chase.push('归档→薛涵月'); if(pilotFilterAspect==='archive') isAspectMatch=true;}
+    else if(d.archiveComplete==='是'&&pilotFilterAspect==='archive') isAspectMatch=true;
+
+    if(d.materialComplete==='否'){chase.push('物料→生产计划'); if(pilotFilterAspect==='material') isAspectMatch=true;}
+    else if(d.materialComplete==='是'&&pilotFilterAspect==='material') isAspectMatch=true;
+
+    if(!d.actualFixture&&d.planFixture){var fd=daysBetween(d.planFixture,today.toISOString().split('T')[0]);if(fd<0)chase.push('治具→邵部长 超期'+Math.abs(fd)+'天');else if(fd<=7)chase.push('治具→邵部长 还有'+fd+'天');if(pilotFilterAspect==='fixture') isAspectMatch=true;}
+    else if(d.actualFixture&&pilotFilterAspect==='fixture') isAspectMatch=true;
+
+    if(d.productionComplete==='否'){chase.push('生产→孙登琨'); if(pilotFilterAspect==='production') isAspectMatch=true;}
+    else if(d.productionComplete==='是'&&pilotFilterAspect==='production') isAspectMatch=true;
+
+    if(!d.actualReview){chase.push('评审→姜雨豪'); if(pilotFilterAspect==='review') isAspectMatch=true;}
+    else if(d.actualReview&&pilotFilterAspect==='review') isAspectMatch=true;
+
+    if(!d.pilotConclusion){chase.push('结论→王国燕/郭嘉'); if(pilotFilterAspect==='conclusion') isAspectMatch=true;}
+    else if(d.pilotConclusion&&pilotFilterAspect==='conclusion') isAspectMatch=true;
+
     if(d.postConclusionIssues&&!d.actualClosure)chase.push('闭环→郭嘉');
+
+    if(!isAspectMatch) return;
+
     html+='<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;padding:12px;margin-bottom:8px">';
     html+='<div style="display:flex;justify-content:space-between"><strong>'+p.name+'</strong><span style="background:'+(chase.length>0?'#E53935':'#E8F5E9')+';color:'+(chase.length>0?'#fff':'#2E7D32')+';padding:2px 8px;border-radius:10px;font-size:11px">'+(chase.length>0?chase.length+'项待催':'正常')+'</span></div>';
     html+='<div style="font-size:11px;color:#757575;margin:4px 0">👤 '+(p.person||'-')+' | 📦 '+(p.series||'-')+'</div>';
@@ -425,6 +474,16 @@ function showPilotOverview() {
   });
   html+='</div>';container.innerHTML=html;
 }
+
+// 阶段筛选芯片
+document.getElementById('stageFilters').addEventListener('click',function(e){
+  if (e.target.classList.contains('stage-chip')) {
+    document.querySelectorAll('.stage-chip').forEach(function(c){c.classList.remove('active');});
+    e.target.classList.add('active');
+    stageFilter = e.target.getAttribute('data-stage');
+    renderList();
+  }
+});
 
 document.getElementById('searchInput').addEventListener('input',function(e){searchText=e.target.value;renderList();});
 document.getElementById('dateStart').addEventListener('change',function(e){dateStart=e.target.value;renderList();});
