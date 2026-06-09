@@ -479,7 +479,7 @@ function showPilotOverview() {
     html+='<div style="font-size:11px;color:#757575;margin:4px 0">👤 '+(p.person||'-')+' | 📦 '+(p.series||'-')+'</div>';
     if(chase.length>0){html+='<div class="chase-box">'+chase.map(function(c){return '• '+c}).join('<br>')+'</div>';}
     html+='<div style="font-size:11px;color:#616161;display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">';
-    html+='<span>归档:'+(d.archiveComplete==='是'?'✅':'❌')+'</span><span>物料:'+(d.materialComplete==='是'?'✅':'❌')+'</span><span>治具:'+(d.actualFixture?'✅':'⏳')+'</span><span>生产:'+(d.productionComplete==='是'?'✅':'❌')+'</span><span>评审:'+(d.actualReview?'✅':'⏳')+'</span><span>结论:'+(d.pilotConclusion||'⏳')+'</span></div></div>';
+    html+='<span>①归档:'+(archDone?'✅':'❌')+'</span><span>②物料:'+(matDone?'✅':'❌')+'</span><span>③生产:'+(prodDone?'✅':'❌')+'</span><span>④评审:'+(reviewDone?'✅':'⏳')+'</span></div></div>';
   });
   html+='</div>';container.innerHTML=html;
 }
@@ -493,6 +493,8 @@ document.getElementById('stageFilters').addEventListener('click',function(e){
     renderList();
   }
 });
+
+document.getElementById('pilotOverview').addEventListener('click',function(e){var t=e.target;while(t&&t!==document.body){if(t.getAttribute&&t.getAttribute('data-aspect')!==null){pilotFilterAspect=t.getAttribute('data-aspect');showPilotOverview();return;}t=t.parentElement;}});
 
 document.getElementById('searchInput').addEventListener('input',function(e){searchText=e.target.value;renderList();});
 document.getElementById('dateStart').addEventListener('change',function(e){dateStart=e.target.value;renderList();});
