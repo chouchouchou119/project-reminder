@@ -66,19 +66,34 @@ function getUrgencyClass(level) {
  * 1. 标星项目置顶
  * 2. 按紧急程度排列（逾期最多 → 即将到期 → 充裕 → 已完成）
  */
-function sortProjects(projects, starredList) {
-  // 先设置标星状态
+var STAGE_PLAN_MAP = {"送检":"送检开始计划","送检开始":"送检开始计划","送检结束":"送检结束计划","中试":"中试开始计划","中试开始":"中试开始计划","中试结束":"中试结束计划","上市":"上市计划"};
+
+// 阶段 → 计划日期映射
+var STAGE_TO_PLAN = { '送检':'送检开始计划','送检开始':'送检开始计划','送检结束':'送检结束计划','中试':'中试开始计划','中试开始':'中试开始计划','中试结束':'中试结束计划','上市':'上市计划' };
+
+function sortProjects(projects, starredList, stageFilter) {
   const starredSet = new Set(starredList.map(String));
+  const today = new Date().toISOString().split('T')[0];
+  const planKey = STAGE_TO_PLAN[stageFilter] || null;
+
   for (const p of projects) {
     p.isStarred = starredSet.has(String(p.serialNo));
 
-    // 计算紧急程度
-    const urgency = extractDaysFromNode(p.nextNode);
+    // 按阶段筛选对应的计划日期计算紧急程度
+    var urgency;
+    if (planKey && p.dates[planKey]) {
+      const days = window.KPICalculator ? window.KPICalculator.daysBetween(today, p.dates[planKey]) : 0;
+      if (days < 0) urgency = { days: days, label: '超期' + Math.abs(days) + '天' };
+      else if (days > 0) urgency = { days: days, label: '还有' + days + '天' };
+      else urgency = { days: Infinity, label: '今天' };
+    } else {
+      urgency = extractDaysFromNode(p.nextNode);
+    }
+
     p._urgencyDays = urgency.days;
     p._urgencyLabel = urgency.label;
     p._urgencyLevel = getUrgencyLevel(urgency.days);
 
-    // 覆盖：如果项目状态为完成/提前完成
     if (p.projectStatus === '完成' || p.projectStatus === '提前完成') {
       p._urgencyDays = Infinity;
       p._urgencyLabel = p.projectStatus;

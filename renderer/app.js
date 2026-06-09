@@ -18,7 +18,7 @@ window._setStageFilter = function(s) { stageFilter = s; recalcAndRender(); };
 window._loadFromResult = function(result) {
   if (!result || !result.sheet1) return;
   allProjects = ExcelParser.parseExcelData(result.sheet1, result.sheet2);
-  Sorter.sortProjects(allProjects, UIRenderer.getStarredList());
+  Sorter.sortProjects(allProjects, UIRenderer.getStarredList(), stageFilter);
   recalcAndRender();
   updateFileInfo(result);
 };
@@ -129,7 +129,7 @@ document.getElementById('dateEnd').addEventListener('change', function(e) {
 // ============================================================
 document.addEventListener('data-refresh', function() {
   if (allProjects.length > 0) {
-    Sorter.sortProjects(allProjects, UIRenderer.getStarredList());
+    Sorter.sortProjects(allProjects, UIRenderer.getStarredList(), stageFilter);
     recalcAndRender();
   }
 });
