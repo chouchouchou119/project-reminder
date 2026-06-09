@@ -57,7 +57,15 @@ function getFilteredProjects() {
 
   // 阶段过滤
   if (stageFilter) {
-    filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
+    if (stageFilter === '上市') {
+      filtered = filtered.filter(function(p) { return p.dates['上市计划'] && p.dates['上市计划'] !== ''; });
+    } else if (stageFilter === '送检结束' || stageFilter === '中试结束') {
+      // 匹配结束阶段：currentStage包含关键词 且 该阶段实际已开始
+      var prefix = stageFilter.replace('结束', '');
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(prefix); });
+    } else {
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
+    }
   }
 
   // 逾期节点过滤
@@ -134,6 +142,10 @@ document.addEventListener('excel-updated', function(e) {
 document.addEventListener('filter-node', function(e) {
   currentFilterNode = e.detail;
   recalcAndRender();
+});
+
+document.addEventListener('pilot-filter-changed', function() {
+  window._showPilotOverview();
 });
 
 if (window.electronAPI && window.electronAPI.onExcelChanged) {

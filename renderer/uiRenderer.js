@@ -460,6 +460,8 @@ async function markCompleted(project) {
 // ============================================================
 // 中试概览 — 显示所有中试项目及催办事项
 // ============================================================
+var pilotFilterAspect = '';
+
 function renderPilotOverview(projects) {
   const panel = document.getElementById('detailPanel');
   const pilotProjects = projects.filter(function(p) { return p.pilotDetail; });
@@ -469,53 +471,68 @@ function renderPilotOverview(projects) {
     return;
   }
 
+  var today = new Date();
   var html = '<div style="padding:16px;"><h2 style="margin-bottom:12px;">🔧 中试进度概览</h2>';
-  html += '<p style="font-size:12px;color:#757575;margin-bottom:16px;">共 ' + pilotProjects.length + ' 个项目进入中试阶段</p>';
+
+  // 环节筛选按钮
+  var aspects = [
+    {key:'',label:'全部'},{key:'archive',label:'归档'},{key:'material',label:'物料'},
+    {key:'fixture',label:'治具'},{key:'production',label:'生产'},{key:'review',label:'评审'},{key:'conclusion',label:'结论'}
+  ];
+  html += '<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
+  aspects.forEach(function(a) {
+    var isOn = pilotFilterAspect === a.key;
+    html += '<button class="pilot-chip' + (isOn ? ' on' : '') + '" onclick="window._setPilotFilter(\'' + a.key + '\')">' + a.label + '</button>';
+  });
+  html += '</div><p style="font-size:12px;color:#757575;margin-bottom:16px;">共 ' + pilotProjects.length + ' 个项目</p>';
 
   for (var i = 0; i < pilotProjects.length; i++) {
     var p = pilotProjects[i];
     var d = p.pilotDetail;
-    var today = new Date();
 
-    // 收集催办项
+    var isAspectMatch = !pilotFilterAspect;
     var chaseItems = [];
-    if (d.archiveComplete === '否') chaseItems.push('研发归档→薛涵月（档案室）');
-    if (d.materialComplete === '否') chaseItems.push('物料齐套→生产计划');
+
+    if (d.archiveComplete === '否') { chaseItems.push('研发归档→薛涵月（档案室）'); if (pilotFilterAspect === 'archive') isAspectMatch = true; }
+    else if (d.archiveComplete === '是' && pilotFilterAspect === 'archive') isAspectMatch = true;
+
+    if (d.materialComplete === '否') { chaseItems.push('物料齐套→生产计划'); if (pilotFilterAspect === 'material') isAspectMatch = true; }
+    else if (d.materialComplete === '是' && pilotFilterAspect === 'material') isAspectMatch = true;
+
     if (!d.actualFixture && d.planFixture) {
-      var fixturePlan = new Date(d.planFixture);
-      var fixtureDays = Math.round((fixturePlan - today) / 86400000);
-      if (fixtureDays < 0) chaseItems.push('治具→邵部长（工艺）超期' + Math.abs(fixtureDays) + '天');
-      else if (fixtureDays <= 7) chaseItems.push('治具→邵部长（工艺）还有' + fixtureDays + '天');
-    }
-    if (d.productionComplete === '否') chaseItems.push('中试生产→孙登琨（生产计划）');
-    if (!d.actualReview) chaseItems.push('中试评审→姜雨豪（研发管理）');
-    if (!d.pilotConclusion) chaseItems.push('中试结论→王国燕/郭嘉（项目计划）');
+      var fd = Math.round((new Date(d.planFixture) - today) / 86400000);
+      if (fd < 0) chaseItems.push('治具→邵部长（工艺）超期' + Math.abs(fd) + '天');
+      else if (fd <= 7) chaseItems.push('治具→邵部长（工艺）还有' + fd + '天');
+      if (pilotFilterAspect === 'fixture') isAspectMatch = true;
+    } else if (d.actualFixture && pilotFilterAspect === 'fixture') isAspectMatch = true;
+
+    if (d.productionComplete === '否') { chaseItems.push('中试生产→孙登琨（生产计划）'); if (pilotFilterAspect === 'production') isAspectMatch = true; }
+    else if (d.productionComplete === '是' && pilotFilterAspect === 'production') isAspectMatch = true;
+
+    if (!d.actualReview) { chaseItems.push('中试评审→姜雨豪（研发管理）'); if (pilotFilterAspect === 'review') isAspectMatch = true; }
+    else if (d.actualReview && pilotFilterAspect === 'review') isAspectMatch = true;
+
+    if (!d.pilotConclusion) { chaseItems.push('中试结论→王国燕/郭嘉（项目计划）'); if (pilotFilterAspect === 'conclusion') isAspectMatch = true; }
+    else if (d.pilotConclusion && pilotFilterAspect === 'conclusion') isAspectMatch = true;
+
     if (d.postConclusionIssues && !d.actualClosure) chaseItems.push('问题闭环→郭嘉');
 
-    var urgencyBadge = '';
-    if (chaseItems.length > 0) {
-      urgencyBadge = '<span style="background:#E53935;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">' + chaseItems.length + '项待催</span>';
-    } else {
-      urgencyBadge = '<span style="background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:10px;font-size:11px;">正常</span>';
-    }
+    if (!isAspectMatch) continue;
 
-    html += '<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;padding:12px;margin-bottom:8px;" onclick="document.querySelector(\'[data-serial=\\\'' + p.serialNo + '\\\']\').click();" style="cursor:pointer;">';
+    var urgencyBadge = chaseItems.length > 0
+      ? '<span style="background:#E53935;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">' + chaseItems.length + '项待催</span>'
+      : '<span style="background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:10px;font-size:11px;">正常</span>';
+
+    html += '<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer" onclick="var el=document.querySelector(\'[data-serial=\\\'' + p.serialNo + '\\\']\');if(el)el.click()">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
-    html += '<strong style="font-size:14px;">' + p.name + '</strong>';
-    html += urgencyBadge;
-    html += '</div>';
+    html += '<strong style="font-size:14px;">' + p.name + '</strong>' + urgencyBadge + '</div>';
     html += '<div style="font-size:11px;color:#757575;">👤 ' + (p.person || '-') + ' | 📦 ' + (p.series || '-') + '</div>';
-
     if (chaseItems.length > 0) {
       html += '<div style="margin-top:8px;background:#FFF3E0;border-radius:4px;padding:8px;">';
       html += '<div style="font-size:11px;color:#E65100;font-weight:600;margin-bottom:4px;">⚠️ 需要催办：</div>';
-      for (var j = 0; j < chaseItems.length; j++) {
-        html += '<div style="font-size:11px;color:#BF360C;margin-left:8px;">• ' + chaseItems[j] + '</div>';
-      }
+      for (var j = 0; j < chaseItems.length; j++) html += '<div style="font-size:11px;color:#BF360C;margin-left:8px;">• ' + chaseItems[j] + '</div>';
       html += '</div>';
     }
-
-    // 中试进度简表
     html += '<div style="margin-top:8px;font-size:11px;color:#616161;display:flex;gap:12px;flex-wrap:wrap;">';
     html += '<span>归档:' + (d.archiveComplete === '是' ? '✅' : '❌') + '</span>';
     html += '<span>物料:' + (d.materialComplete === '是' ? '✅' : '❌') + '</span>';
@@ -523,14 +540,16 @@ function renderPilotOverview(projects) {
     html += '<span>生产:' + (d.productionComplete === '是' ? '✅' : '❌') + '</span>';
     html += '<span>评审:' + (d.actualReview ? '✅' : '⏳') + '</span>';
     html += '<span>结论:' + (d.pilotConclusion || '⏳') + '</span>';
-    html += '</div>';
-
-    html += '</div>';
+    html += '</div></div>';
   }
-
   html += '</div>';
   panel.innerHTML = html;
 }
+
+window._setPilotFilter = function(aspect) {
+  pilotFilterAspect = aspect;
+  document.dispatchEvent(new CustomEvent('pilot-filter-changed'));
+};
 
 window.UIRenderer = {
   renderKpiCards,
@@ -541,5 +560,6 @@ window.UIRenderer = {
   setStarredList,
   toggleStar,
   filterByDelayedNode,
-  clearFilterNode
+  clearFilterNode,
+  _setPilotFilter: window._setPilotFilter
 };

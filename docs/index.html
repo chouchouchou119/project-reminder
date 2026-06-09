@@ -116,9 +116,11 @@ body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3
       <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
       <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap" id="stageFilters">
         <button class="stage-chip active" data-stage="">全部</button>
-        <button class="stage-chip" data-stage="送检">送检</button>
-        <button class="stage-chip" data-stage="中试">中试</button>
-        <button class="stage-chip" data-stage="批产">批产</button>
+        <button class="stage-chip" data-stage="送检">送检开始</button>
+        <button class="stage-chip" data-stage="送检结束">送检结束</button>
+        <button class="stage-chip" data-stage="中试">中试开始</button>
+        <button class="stage-chip" data-stage="中试结束">中试结束</button>
+        <button class="stage-chip" data-stage="上市">上市</button>
       </div>
     </div>
     <div id="projectList"><div class="empty-state"><p>📂 加载中...</p></div></div>
@@ -168,7 +170,14 @@ function getFilteredProjects() {
     filtered = filtered.filter(function(p) { return isNodeDelayed(p, filterNode, today); });
   }
   if (stageFilter) {
-    filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
+    if (stageFilter === "上市") {
+      filtered = filtered.filter(function(p) { return p.dates["上市计划"] && p.dates["上市计划"] !== ""; });
+    } else if (stageFilter === "送检结束" || stageFilter === "中试结束") {
+      var prefix = stageFilter.replace("结束", "");
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(prefix); });
+    } else {
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
+    }
   }
   if (dateStart || dateEnd) {
     filtered = filtered.filter(function(p) {

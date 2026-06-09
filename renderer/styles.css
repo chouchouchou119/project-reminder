@@ -113,6 +113,47 @@ body {
   font-size: 12px;
 }
 
+/* 阶段筛选按钮 */
+.stage-chip {
+  padding: 4px 12px;
+  border: 1px solid #90CAF9;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+  color: #1565C0;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.stage-chip:hover { background: #E3F2FD; }
+.stage-chip.active {
+  background: #1565C0;
+  color: #fff;
+  border-color: #0D47A1;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(21,101,192,0.3);
+}
+
+/* 中试环节筛选 */
+.pilot-chip {
+  padding: 3px 10px;
+  border: 1px solid #BDBDBD;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #fff;
+  color: #757575;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.pilot-chip:hover { background: #F5F5F5; }
+.pilot-chip.on {
+  background: #FFF3E0;
+  color: #E65100;
+  border-color: #FFB74D;
+  font-weight: 600;
+}
+
 /* ============================================================
    KPI Cards
    ============================================================ */
