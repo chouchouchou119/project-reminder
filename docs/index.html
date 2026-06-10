@@ -338,28 +338,26 @@ function calcKPI(projects, today) {
 function sortProjects(projects) {
   var today=new Date().toISOString().split("T")[0];
   var planKey=(typeof STAGE_TO_PLAN!=="undefined"&&stageFilter)?STAGE_TO_PLAN[stageFilter]:null;
-  var actualKey=(typeof ACTUAL_MAP!=="undefined"&&stageFilter)?ACTUAL_MAP[stageFilter]:null;
   projects.forEach(function(p){
-    var days;
+    var urgency;
     if(planKey&&p.dates[planKey]){
-      if(actualKey&&p.dates[actualKey]){days=Infinity;}
-      else{days=daysBetween(today,p.dates[planKey]);if(days===Infinity)days=999;}
+      var d=daysBetween(today,p.dates[planKey]);
+      if(d<0)urgency={days:d,label:"超期"+Math.abs(d)+"天"};
+      else if(d>0)urgency={days:d,label:"还有"+d+"天"};
+      else urgency={days:Infinity,label:"今天到期"};
     }else{
-      var worst=Infinity;
-      for(var i=0;i<KPI_NODES.length;i++){
-        var node=KPI_NODES[i],plan=p.dates[NODE_PLAN[node]],actual=p.dates[NODE_ACTUAL[node]];
-        if(!plan||actual)continue;
-        var d=daysBetween(today,plan);if(d<worst)worst=d;
+      var t=p.nextNode||"";
+      var m=t.match(/已超期(\d+)天/);
+      if(m)urgency={days:-parseInt(m[1]),label:"超期"+m[1]+"天"};
+      else{
+        m=t.match(/还有(\d+)天/);
+        if(m)urgency={days:parseInt(m[1]),label:"还有"+m[1]+"天"};
+        else urgency={days:Infinity,label:t.includes("已完成")?"已完成":(p.projectStatus||"")};
       }
-      days=worst;
     }
-    var td=Infinity;
-    var m=p.nextNode?p.nextNode.match(/已超期(d+)天/):null;if(m)td=-parseInt(m[1]);
-    m=p.nextNode?p.nextNode.match(/还有(d+)天/):null;if(m)td=parseInt(m[1]);
-    if(p.nextNode&&p.nextNode.includes("已完成"))td=Infinity;
-    if(days!==Infinity&&days<td){p._days=days;p._label=days<0?"超期"+Math.abs(days)+"天":"还有"+days+"天";}
-    else{p._days=td;p._label=td===Infinity?(p.projectStatus||""):(td<0?"超期"+Math.abs(td)+"天":"还有"+td+"天");}
-    p._level=td===Infinity?"completed":(td<-30?"overdue-severe":(td<0?"overdue":(td<=7?"warning":(td<=30?"soon":"normal"))));
+    p._days=urgency.days;
+    p._label=urgency.label;
+    p._level=urgency.days===Infinity?"completed":(urgency.days<-30?"overdue-severe":(urgency.days<0?"overdue":(urgency.days<=7?"warning":(urgency.days<=30?"soon":"normal"))));
     if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){p._days=Infinity;p._label=p.projectStatus;p._level="completed";}
   });
   projects.sort(function(a,b){return a._days-b._days||a.name.localeCompare(b.name,"zh-CN");});
