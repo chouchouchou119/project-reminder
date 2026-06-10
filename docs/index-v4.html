@@ -1,0 +1,544 @@
+<!-- deployed 2026-06-10T05:56:41.003Z -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产品项目进度提醒</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#E3F2FD;color:#212121;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:#BBDEFB;border-bottom:1px solid #90CAF9;flex-shrink:0}
+#header h1{font-size:18px;color:#1565C0}.file-info{font-size:12px;color:#616161}
+.btn{padding:6px 16px;border-radius:4px;border:1px solid #90CAF9;cursor:pointer;font-size:13px;font-family:inherit;background:#fff;color:#1565C0}
+.btn:hover{background:#E3F2FD}
+#kpiSection{display:flex;gap:12px;padding:16px 24px;flex-shrink:0}
+.kpi-card{flex:1;background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center;border-left:4px solid #90CAF9}
+.kpi-main{border-left-color:#1565C0;background:linear-gradient(135deg,#E3F2FD,#fff)}
+.kpi-label{font-size:13px;color:#616161;margin-bottom:6px}
+.kpi-value{font-size:28px;font-weight:700}.kpi-sub{font-size:11px;color:#9E9E9E;margin-top:4px}
+.clickable{cursor:pointer}.clickable:hover{box-shadow:0 2px 8px rgba(0,0,0,.15)}
+#mainContent{display:flex;flex:1;overflow:hidden;gap:1px;background:#E0E0E0}
+#leftPanel{width:60%;display:flex;flex-direction:column;background:#fff}
+.search-box{padding:10px 16px;border-bottom:1px solid #E0E0E0;flex-shrink:0}
+.search-box input{width:100%;padding:8px 12px;border:1px solid #E0E0E0;border-radius:20px;font-size:13px;outline:none}
+#projectList{flex:1;overflow-y:auto;padding:4px 0}
+.group-header{padding:8px 16px;font-size:12px;font-weight:600;color:#616161;background:#F5F5F5;position:sticky;top:0}
+.group-header.overdue-severe{background:#FFEBEE;color:#E53935}
+.group-header.overdue{background:#FFF3E0;color:#F57C00}
+.group-header.warning{background:#FFFDE7;color:#F57F17}
+.group-header.soon{background:#E8F5E9;color:#43A047}
+.group-header.completed{background:#F5F5F5;color:#9E9E9E}
+.project-item{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #F5F5F5;cursor:pointer;border-left:4px solid transparent;gap:10px}
+.project-item:hover{background:#F5F9FF}
+.project-item.selected{background:#E3F2FD;border-left-color:#1565C0}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{font-size:11px;color:#616161;margin-top:2px;display:flex;gap:8px}
+.item-badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;flex-shrink:0}
+.badge-overdue-severe{background:#FFEBEE;color:#E53935}
+.badge-overdue{background:#FFF3E0;color:#F57C00}
+.badge-warning{background:#FFFDE7;color:#F57F17}
+.badge-soon{background:#E8F5E9;color:#43A047}
+.badge-completed{background:#F5F5F5;color:#9E9E9E}
+#rightPanel{flex:1;background:#fff;overflow-y:auto}
+.detail-panel{padding:20px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#9E9E9E;font-size:14px}
+.detail-header{display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #BBDEFB}
+.detail-header h2{font-size:16px}
+.detail-section{margin-bottom:16px}
+.detail-section h3{font-size:13px;color:#616161;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #E0E0E0}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:13px}
+.detail-grid .label{color:#616161}.detail-grid .value{font-weight:500}
+.node-step{font-size:12px;padding:4px 8px;border-radius:4px}
+.node-step.delayed{background:#FFEBEE;color:#E53935}
+.node-step.completed{background:#E8F5E9;color:#43A047}
+.chase-box{background:#FFF3E0;border:1px solid #FFB74D;border-radius:6px;padding:10px;margin:8px 0}
+.chase-box strong{color:#E65100}
+.filter-banner{padding:8px 16px;background:#FFEBEE;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.pilot-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.pilot-table td{padding:6px 8px;border:1px solid #E0E0E0}
+.login-box{display:flex;justify-content:center;align-items:center;height:100vh}
+.login-card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center}
+.login-card h2{color:#1565C0;margin-bottom:20px}
+.login-card input{padding:10px 16px;border:2px solid #E0E0E0;border-radius:8px;font-size:16px;width:200px;text-align:center;outline:none}
+.login-card input:focus{border-color:#1565C0}
+.login-card button{margin-top:12px;padding:10px 32px;background:#1565C0;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
+.login-card button:hover{background:#0D47A1}
+.err{color:#E53935;margin-top:8px}
+.stage-chip{padding:3px 10px;border:1px solid #90CAF9;border-radius:12px;font-size:11px;cursor:pointer;background:#fff;color:#1565C0;transition:all .15s}
+.stage-chip:hover{background:#E3F2FD}
+.stage-chip.active{background:#1565C0;color:#fff;border-color:#1565C0}
+.pilot-chip{padding:2px 8px;border:1px solid #BDBDBD;border-radius:10px;font-size:10px;cursor:pointer;background:#fff;color:#757575;transition:all .15s}
+.pilot-chip:hover{background:#f5f5f5}
+.pilot-chip.on{background:#FFF3E0;color:#E65100;border-color:#FFB74D}
+</style>
+</head>
+<body>
+
+<div id="loginPage" class="login-box">
+  <div class="login-card">
+    <h2>🔐 请输入访问密码</h2>
+    <form onsubmit="checkPwd();return false">
+      <input type="password" id="pwdInput" placeholder="输入密码" autofocus><br>
+      <p id="pwdErr" class="err" style="display:none">密码错误</p>
+      <button type="submit">确认</button>
+    </form>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;height:100vh;flex-direction:column">
+<header id="header">
+  <h1>📊 产品项目进度提醒</h1>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="file-info" id="fileInfo">加载中...</span>
+    <button class="btn" onclick="location.reload()">🔄 刷新</button>
+    <button class="btn" onclick="showPilotOverview()">🔧 中试概览</button>
+  </div>
+</header>
+<section id="kpiSection">
+  <div class="kpi-card kpi-main" id="kpiMain">
+    <div class="kpi-label" style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+      <span>按时完成率</span>
+      <input type="date" id="dateStart" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="开始日期">
+      <span style="font-size:10px">~</span>
+      <input type="date" id="dateEnd" style="font-size:10px;padding:2px 4px;width:105px;border:1px solid #ddd;border-radius:3px" title="结束日期">
+      <button onclick="document.getElementById('dateStart').value='';document.getElementById('dateEnd').value='';dateStart='';dateEnd='';renderList();" style="font-size:10px;padding:1px 6px;border:1px solid #ccc;border-radius:3px;background:#fff;cursor:pointer;color:#999" title="清除日期">✕</button>
+    </div>
+    <div class="kpi-value">--</div><div class="kpi-sub">加载中...</div>
+  </div>
+  <div class="kpi-card" id="kpiC0"><div class="kpi-label">📋 送检开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
+  <div class="kpi-card" id="kpiC1"><div class="kpi-label">📋 送检结束</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
+  <div class="kpi-card" id="kpiC2"><div class="kpi-label">📋 中试开始</div><div class="kpi-value">--</div><div class="kpi-sub"></div></div>
+</section>
+<main id="mainContent">
+  <aside id="leftPanel">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="🔍 搜索项目名称、系列、负责人...">
+      <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap" id="stageFilters">
+        <button class="stage-chip active" data-stage="">全部</button>
+        <button class="stage-chip" data-stage="送检">送检开始</button>
+        <button class="stage-chip" data-stage="送检结束">送检结束</button>
+        <button class="stage-chip" data-stage="中试">中试开始</button>
+        <button class="stage-chip" data-stage="中试结束">中试结束</button>
+        <button class="stage-chip" data-stage="上市">上市</button>
+      </div>
+    </div>
+    <div id="projectList"><div class="empty-state"><p>📂 加载中...</p></div></div>
+  </aside>
+  <section id="rightPanel">
+    <div id="detailPanel" class="detail-panel"><div class="empty-state"><p>👈 点击左侧项目查看详情</p></div></div>
+    <div id="pilotOverview" style="display:none"></div>
+  </section>
+</main>
+</div>
+
+<script src="xlsx.min.js"></script>
+<script>
+// ==================== 密码 ====================
+var WEB_PWD = '119119';
+function checkPwd() {
+  var v = document.getElementById('pwdInput').value;
+  if (v === WEB_PWD) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    document.cookie = 'key=' + WEB_PWD + ';max-age=86400;path=/';
+    loadApp();
+  } else {
+    document.getElementById('pwdErr').style.display = 'block';
+  }
+}
+// 检查cookie自动登录
+if (document.cookie.indexOf('key=' + WEB_PWD) >= 0) {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  window.addEventListener('DOMContentLoaded', loadApp);
+}
+
+// ==================== 数据 ====================
+var allProjects = [], kpiData = null, searchText = '', filterNode = null, selectedSerial = null;
+var dateStart = '', dateEnd = '', stageFilter = '';
+var pilotFilterAspect = ''; // 中试概览的环节筛选
+
+function getFilteredProjects() {
+  var filtered = allProjects.slice();
+  if (searchText && searchText.trim()) {
+    var kw = searchText.trim().toLowerCase();
+    filtered = filtered.filter(function(p) { return p.name.toLowerCase().includes(kw) || p.series.toLowerCase().includes(kw) || p.person.toLowerCase().includes(kw); });
+  }
+  if (filterNode) {
+    var today = dateEnd || new Date().toISOString().split('T')[0];
+    filtered = filtered.filter(function(p) { return isNodeDelayed(p, filterNode, today); });
+  }
+  if (stageFilter) {
+    if (stageFilter === "上市") {
+      filtered = filtered.filter(function(p) { return p.dates["上市计划"] && p.dates["上市计划"] !== ""; });
+    } else if (stageFilter === "送检结束" || stageFilter === "中试结束") {
+      var prefix = stageFilter.replace("结束", "");
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(prefix); });
+    } else {
+      filtered = filtered.filter(function(p) { return p.currentStage && p.currentStage.includes(stageFilter); });
+    }
+  }
+  if (dateStart || dateEnd) {
+    filtered = filtered.filter(function(p) {
+      var plan = p.dates['送检开始计划']; if (!plan) return true;
+      if (dateStart && plan < dateStart) return false;
+      if (dateEnd && plan > dateEnd) return false;
+      return true;
+    });
+  }
+  return filtered;
+}
+
+function recalcKPI() {
+  var filtered = getFilteredProjects();
+  var today = dateEnd || new Date().toISOString().split('T')[0];
+  kpiData = calcKPI(filtered, today);
+}
+
+function clean(v) { return v ? String(v).replace(/\r?\n/g,' ').trim() : ''; }
+function daysBetween(d1, d2) {
+  if (!d1 || !d2) return Infinity;
+  var a = new Date(d1), b = new Date(d2);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return Infinity;
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
+// ==================== Excel解析 ====================
+var COL={NAME:4,MODEL:5,SERIAL:0,SERIES:1,ALT_CODE:7,ALT_MODEL:8,PERSON:36,COMPLEXITY:35,DEV_METHOD:37,
+  PLAN_CHECK_START:9,PLAN_CHECK_END:10,PLAN_PILOT_START:11,PLAN_PILOT_END:12,
+  PLAN_PROD_START:13,PLAN_PROD_END:14,PLAN_LAUNCH:15,
+  ACTUAL_CHECK_START:16,ACTUAL_CHECK_END:17,ACTUAL_PILOT_START:18,ACTUAL_PILOT_END:19,
+  ACTUAL_PROD_START:20,ACTUAL_PROD_END:21,ACTUAL_LAUNCH:22,ACTUAL_CERT:23,
+  MONITOR_CHECK_START:24,MONITOR_CHECK_END:25,MONITOR_PILOT_START:26,
+  MONITOR_PILOT_END:27,MONITOR_PROD_START:28,MONITOR_PROD_END:29,
+  CERT_STATUS:30,LAUNCH_STATUS:31,PROJECT_STATUS:32,MONITOR_FLAG:33,
+  REMARK:34,CURRENT_STAGE:38,NEXT_NODE:39,NEW_STD_DATE:40,TRANSITION_END:41};
+var COL2={NAME:0,ARCHIVE_COMPLETE:10,MATERIAL_COMPLETE:11,MATERIAL_NOTE:12,
+  ACTUAL_FIXTURE:13,PRODUCTION_COMPLETE:14,ACTUAL_PILOT_QTY:15,
+  ACTUAL_REVIEW:16,PILOT_CONCLUSION:17,POST_CONCLUSION_ISSUES:18,
+  RESOLVE_PLAN_DATE:19,ACTUAL_CLOSURE:20,PRODUCT_OWNER:21};
+
+function serialToISO(s) {
+  if (!s || s < 1) return '';
+  try { var d = XLSX.SSF.parse_date_code(s); return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'); }
+  catch(e) { return ''; }
+}
+function convertDates(arr) {
+  for (var r = 0; r < arr.length; r++)
+    for (var c = 0; c < arr[r].length; c++)
+      if (typeof arr[r][c] === 'number' && arr[r][c] > 40000 && arr[r][c] < 100000) {
+        var ds = serialToISO(arr[r][c]); if (ds) arr[r][c] = ds;
+      }
+}
+
+function parseSheet2(raw) {
+  var map = {};
+  if (!raw || raw.length < 2) return map;
+  for (var r = 1; r < raw.length; r++) {
+    var n = clean(raw[r][COL2.NAME]); if (!n) continue;
+    map[n] = {
+      actualArchiveHW: raw[r][8]||'', actualArchiveSW: clean(raw[r][9]||''),
+      archiveComplete: clean(raw[r][COL2.ARCHIVE_COMPLETE]),
+      materialComplete: clean(raw[r][COL2.MATERIAL_COMPLETE]),
+      materialNote: clean(raw[r][COL2.MATERIAL_NOTE]),
+      actualFixture: raw[r][COL2.ACTUAL_FIXTURE]||'',
+      productionComplete: clean(raw[r][COL2.PRODUCTION_COMPLETE]),
+      actualPilotQty: clean(raw[r][COL2.ACTUAL_PILOT_QTY]),
+      actualReview: raw[r][COL2.ACTUAL_REVIEW]||'',
+      pilotConclusion: clean(raw[r][COL2.PILOT_CONCLUSION]),
+      postConclusionIssues: clean(raw[r][COL2.POST_CONCLUSION_ISSUES]),
+      resolvePlanDate: raw[r][COL2.RESOLVE_PLAN_DATE]||'',
+      actualClosure: raw[r][COL2.ACTUAL_CLOSURE]||'',
+      productOwner: clean(raw[r][COL2.PRODUCT_OWNER]),
+      planArchive: raw[r][4]||'', planMaterial: raw[r][5]||'',
+      planFixture: raw[r][6]||'', planPilotEnd: raw[r][7]||'',
+      actualPilotDate: raw[r][2]||'', planQty: clean(raw[r][3]||'')
+    };
+  }
+  return map;
+}
+
+function parseData(s1, s2) {
+  var projects = [], pilotMap = parseSheet2(s2);
+  for (var r = 1; r < s1.length; r++) {
+    var name = clean(s1[r][COL.NAME]); if (!name) continue;
+    var p = {
+      serialNo: clean(s1[r][COL.SERIAL]), series: clean(s1[r][COL.SERIES]),
+      name: name, model: clean(s1[r][COL.MODEL]), altCode: clean(s1[r][COL.ALT_CODE]), altModel: clean(s1[r][COL.ALT_MODEL]), person: clean(s1[r][COL.PERSON]),
+      complexity: clean(s1[r][COL.COMPLEXITY]), devMethod: clean(s1[r][COL.DEV_METHOD]),
+      dates: {
+        '送检开始计划':s1[r][COL.PLAN_CHECK_START]||'','送检结束计划':s1[r][COL.PLAN_CHECK_END]||'',
+        '中试开始计划':s1[r][COL.PLAN_PILOT_START]||'','中试结束计划':s1[r][COL.PLAN_PILOT_END]||'',
+        '批产开始计划':s1[r][COL.PLAN_PROD_START]||'','批产结束计划':s1[r][COL.PLAN_PROD_END]||'',
+        '上市计划':s1[r][COL.PLAN_LAUNCH]||'','送检开始实际':s1[r][COL.ACTUAL_CHECK_START]||'',
+        '送检结束实际':s1[r][COL.ACTUAL_CHECK_END]||'','中试开始实际':s1[r][COL.ACTUAL_PILOT_START]||'',
+        '中试结束实际':s1[r][COL.ACTUAL_PILOT_END]||'','批产开始实际':s1[r][COL.ACTUAL_PROD_START]||'',
+        '批产结束实际':s1[r][COL.ACTUAL_PROD_END]||'','上市实际':s1[r][COL.ACTUAL_LAUNCH]||'',
+        '获证实际':s1[r][COL.ACTUAL_CERT]||''
+      },
+      monitors: {
+        '送检开始':clean(s1[r][COL.MONITOR_CHECK_START]),'送检结束':clean(s1[r][COL.MONITOR_CHECK_END]),
+        '中试开始':clean(s1[r][COL.MONITOR_PILOT_START]),'中试结束':clean(s1[r][COL.MONITOR_PILOT_END]),
+        '批产开始':clean(s1[r][COL.MONITOR_PROD_START]),'批产结束':clean(s1[r][COL.MONITOR_PROD_END])
+      },
+      projectStatus: clean(s1[r][COL.PROJECT_STATUS]), monitorFlag: s1[r][COL.MONITOR_FLAG],
+      remark: clean(s1[r][COL.REMARK]), currentStage: clean(s1[r][COL.CURRENT_STAGE]),
+      nextNode: clean(s1[r][COL.NEXT_NODE]),
+      isLPCB: name.toUpperCase().includes('LPCB'),
+      isCooperative: (s1[r][COL.MONITOR_FLAG] === 0 || s1[r][COL.MONITOR_FLAG] === '0'),
+      pilotDetail: null
+    };
+    if (pilotMap[name]) p.pilotDetail = pilotMap[name];
+    else { for (var k in pilotMap) { if (name.includes(k) || k.includes(name)) { p.pilotDetail = pilotMap[k]; break; } } }
+    projects.push(p);
+  }
+  return projects;
+}
+
+// ==================== KPI ====================
+var KPI_NODES=['送检开始','送检结束','中试开始'];
+var NODE_PLAN={'送检开始':'送检开始计划','送检结束':'送检结束计划','中试开始':'中试开始计划'};
+var NODE_ACTUAL={'送检开始':'送检开始实际','送检结束':'送检结束实际','中试开始':'中试开始实际'};
+var STAGE_TO_PLAN={'送检':'送检开始计划','送检开始':'送检开始计划','送检结束':'送检结束计划','中试':'中试开始计划','中试开始':'中试开始计划','中试结束':'中试结束计划','上市':'上市计划'};var ACTUAL_MAP={'送检':'送检开始实际','送检开始':'送检开始实际','送检结束':'送检结束实际','中试':'中试开始实际','中试开始':'中试开始实际','中试结束':'中试结束实际','上市':'上市实际'};
+
+function isNodeDelayed(p, node, today) {
+  var plan=p.dates[NODE_PLAN[node]], actual=p.dates[NODE_ACTUAL[node]];
+  if (actual) return false;
+  if (!plan) return p.monitors[node]==='逾期未完成';
+  var past=daysBetween(plan, today);
+  if (past===Infinity) return p.monitors[node]==='逾期未完成';
+  return past>0;
+}
+
+function calcKPI(projects, today) {
+  if (!today) { var now=new Date(); today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'); }
+  var monitored=projects.filter(function(p){
+    if (p.projectStatus==='完成'||p.projectStatus==='提前完成') return false;
+    if (p.isLPCB) return false;
+    if (p.isCooperative) return false;
+    var dp=daysBetween(today, p.dates['送检开始计划']);
+    return (dp>=0&&dp<=30)||!!p.dates['送检开始实际'];
+  });
+  var delayed=0, bd={};
+  for (var i=0;i<KPI_NODES.length;i++) bd[KPI_NODES[i]]={delayed:0};
+  for (var j=0;j<monitored.length;j++) {
+    var d=false;
+    for (var k=0;k<KPI_NODES.length;k++) {
+      if (isNodeDelayed(monitored[j],KPI_NODES[k],today)) { bd[KPI_NODES[k]].delayed++; d=true; }
+    }
+    if (d) delayed++;
+  }
+  var rate=monitored.length>0?(1-delayed/monitored.length):0;
+  return {onTimeRate:Math.round(rate*10000)/100,onTimeRateDisplay:(Math.round(rate*1000)/10).toFixed(1)+'%',delayedCount:delayed,totalCount:monitored.length,nodeBreakdown:bd};
+}
+
+// ==================== 排序 ====================
+function extractDaysFromNode(t){if(!t)return{label:"",days:Infinity};var s=String(t).trim();var m=s.match(/已超期(d+)天/);if(m)return{label:"超期"+m[1]+"天",days:-parseInt(m[1])};m=s.match(/还有(d+)天/);if(m)return{label:"还有"+m[1]+"天",days:parseInt(m[1])};if(s.includes("已完成"))return{label:"已完成",days:Infinity};return{label:s,days:Infinity};}
+function getUrgencyLevel(d){if(d===Infinity)return"completed";if(d<-30)return"overdue-severe";if(d<0)return"overdue";if(d<=7)return"warning";if(d<=30)return"soon";return"normal";}
+
+function sortProjects(projects) {
+  var today=new Date().toISOString().split("T")[0];
+  var planKey=(typeof STAGE_TO_PLAN!=="undefined"&&stageFilter)?STAGE_TO_PLAN[stageFilter]:null;
+  var actualKey=(typeof ACTUAL_MAP!=="undefined"&&stageFilter)?ACTUAL_MAP[stageFilter]:null;
+  projects.forEach(function(p){
+    var urgency;
+    if(planKey&&p.dates[planKey]){
+      /* completed check below */
+      else{var d=daysBetween(today,p.dates[planKey]);if(d<0)urgency={days:d,label:"超期"+Math.abs(d)+"天"};else if(d>0)urgency={days:d,label:"还有"+d+"天"};else urgency={days:Infinity,label:"今天到期"};}
+    }else{urgency=extractDaysFromNode(p.nextNode);}
+    p._urgencyDays=urgency.days;
+    p._urgencyLabel=urgency.label;
+    p._urgencyLevel=getUrgencyLevel(urgency.days);
+    if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){p._urgencyDays=Infinity;p._urgencyLabel=p.projectStatus;p._urgencyLevel="completed";}
+  });
+  projects.sort(function(a,b){return a._urgencyDays-b._urgencyDays||a.name.localeCompare(b.name,"zh-CN");});
+  return projects;
+}
+// ==================== 渲染 ====================
+function renderKPI() {
+  if(!kpiData) return;
+  document.getElementById('kpiMain').querySelector('.kpi-value').textContent=kpiData.onTimeRateDisplay;
+  document.getElementById('kpiMain').querySelector('.kpi-sub').textContent='延期 '+kpiData.delayedCount+' / 监控 '+kpiData.totalCount;
+  var el=document.getElementById('kpiMain').querySelector('.kpi-value');
+  el.style.color=kpiData.onTimeRate>=90?'#43A047':(kpiData.onTimeRate>=75?'#F57C00':'#E53935');
+  for(var i=0;i<KPI_NODES.length;i++){
+    var card=document.getElementById('kpiC'+i), bd=kpiData.nodeBreakdown[KPI_NODES[i]];
+    card.querySelector('.kpi-value').textContent=bd.delayed>0?bd.delayed+' 逾期':'正常';
+    card.querySelector('.kpi-value').style.color=bd.delayed>0?'#E53935':'#43A047';
+    card.querySelector('.kpi-sub').textContent=bd.delayed>0?'点击查看明细':'';
+    if(bd.delayed>0){card.classList.add('clickable');card.onclick=(function(n){return function(){filterNode=n;renderList();};})(KPI_NODES[i]);}
+    else{card.classList.remove('clickable');card.onclick=null;}
+  }
+}
+
+function renderList() {
+  recalcKPI(); renderKPI();
+  var container=document.getElementById('projectList');
+  var filtered=getFilteredProjects();
+  container.innerHTML='';
+  var ov=0,wn=0,nm=0,cp=0;
+  filtered.forEach(function(p){
+    if(p._urgencyLevel==='overdue-severe'||p._urgencyLevel==='overdue')ov++;
+    else if(p._urgencyLevel==='warning'||p._urgencyLevel==='soon')wn++;
+    else if(p._urgencyLevel==='completed')cp++;else nm++;
+  });
+  var sd=document.createElement('div');
+  sd.style.cssText='padding:8px 16px;font-size:12px;background:#F5F5F5;border-bottom:1px solid #E0E0E0';
+  sd.innerHTML='共 <b>'+filtered.length+'</b> 个项目'+(ov>0?'，<b style="color:#E53935">超期 '+ov+'</b> 个':'')+(wn>0?'，<b style="color:#F57C00">即将到期 '+wn+'</b> 个':'')+(nm>0?'，<b style="color:#43A047">正常 '+nm+'</b> 个':'')+(cp>0?'，<b style="color:#9E9E9E">完成 '+cp+'</b> 个':'')+(stageFilter?' <span style="color:#1565C0">| '+stageFilter+'</span>':'');
+  container.appendChild(sd);
+  if(filtered.length===0){container.innerHTML='<div class="empty-state"><p>没有匹配的项目</p>'+(filterNode?'<button class="btn" onclick="filterNode=null;renderList()">← 返回</button>':'')+'</div>';return;}
+  if(filterNode){var banner=document.createElement('div');banner.className='filter-banner';banner.innerHTML='<span>🔍 「'+filterNode+'」逾期未完成（'+filtered.length+'个项目）</span><button class="btn" onclick="filterNode=null;renderList()">✕ 清除</button>';container.appendChild(banner);}
+  var groups={'overdue-severe':{label:'🔴 严重超期',items:[],cls:'overdue-severe'},'overdue':{label:'🟠 已超期',items:[],cls:'overdue'},'warning':{label:'🟡 即将到期',items:[],cls:'warning'},'soon':{label:'🟢 近期关注',items:[],cls:'soon'},'normal':{label:'🟢 正常',items:[],cls:'soon'},'completed':{label:'⚪ 已完成',items:[],cls:'completed'}};
+  filtered.forEach(function(p){var g=groups[p._urgencyLevel];if(g)g.items.push(p);else groups.normal.items.push(p);});
+  for(var gk in groups){
+    var g=groups[gk];if(g.items.length===0) continue;
+    var hdr=document.createElement('div');hdr.className='group-header '+g.cls;hdr.textContent=g.label+' ('+g.items.length+')';container.appendChild(hdr);
+    g.items.forEach(function(p){
+      var item=document.createElement('div');item.className='project-item';
+      if(p.serialNo===selectedSerial) item.classList.add('selected');
+      item.innerHTML='<div class="item-info"><div class="item-name">'+(p.pilotDetail?'🔧 ':'')+p.name+'</div><div class="item-meta"><span>👤 '+(p.person||'-')+'</span><span>📦 '+(p.series||'-')+'</span><span>📍 '+(p.currentStage||'-')+'</span></div></div><span class="item-badge badge-'+p._urgencyLevel+'">'+p._urgencyLabel+'</span>';
+      item.onclick=function(){selectedSerial=p.serialNo;renderList();renderDetail(p);document.getElementById('pilotOverview').style.display='none';document.getElementById('detailPanel').style.display='block';};
+      container.appendChild(item);
+    });
+  }
+}
+
+function renderDetail(p) {
+  var panel=document.getElementById('detailPanel');panel.style.display='block';
+  document.getElementById('pilotOverview').style.display='none';
+  var html='<div class="detail-header"><h2>'+p.name+'</h2></div>';
+  html+='<div class="detail-section"><h3>📋 基本信息</h3><div class="detail-grid">';
+  ['序号:'+p.serialNo,'系列:'+(p.series||'-'),'型号:'+(p.model||'-'),'替代编码:'+(p.altCode||'-'),'替代型号:'+(p.altModel||'-'),'负责人:<strong>'+(p.person||'-')+'</strong>','复杂度:'+(p.complexity||'-'),'当前阶段:'+(p.currentStage||'-'),'项目状态:'+(p.projectStatus||'进行中'),'下一步:'+(p.nextNode||'-')].forEach(function(s){var parts=s.split(':');html+='<span class="label">'+parts[0]+'</span><span class="value">'+parts[1]+'</span>';});
+  html+='</div></div>';
+  html+='<div class="detail-section"><h3>📅 关键节点进度</h3><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#E3F2FD"><th style="padding:6px 8px;text-align:left">节点</th><th style="padding:6px 8px;text-align:left">计划</th><th style="padding:6px 8px;text-align:left">实际</th><th style="padding:6px 8px;text-align:left">状态</th></tr>';
+  [['送检开始','送检开始计划','送检开始实际'],['送检结束','送检结束计划','送检结束实际'],['中试开始','中试开始计划','中试开始实际'],['中试结束','中试结束计划','中试结束实际'],['批产开始','批产开始计划','批产开始实际'],['批产结束','批产结束计划','批产结束实际'],['上市','上市计划','上市实际']].forEach(function(n){
+    var st=p.monitors[n[0]]||'',ic='';
+    if(st.includes('逾期未完成'))ic='🔴 ';else if(st.includes('逾期完成'))ic='⚠️ ';else if(st.includes('按期完成'))ic='✅ ';else if(st==='待完成')ic='⏳ ';
+    var cls=st.includes('逾期')?'delayed':(st.includes('按期')?'completed':'');
+    html+='<tr><td style="padding:6px 8px"><strong>'+n[0]+'</strong></td><td style="padding:6px 8px">'+(p.dates[n[1]]||'-')+'</td><td style="padding:6px 8px">'+(p.dates[n[2]]||'-')+'</td><td class="node-step '+cls+'">'+ic+(st||'-')+'</td></tr>';
+  });
+  html+='</table></div>';
+  if(p.pilotDetail){
+    var d=p.pilotDetail,today=new Date(),chase=[];
+    if(d.archiveComplete==='否')chase.push('研发归档→薛涵月（档案室）');
+    if(d.materialComplete==='否')chase.push('物料齐套→生产计划');
+    if(!d.actualFixture&&d.planFixture){var fd=daysBetween(d.planFixture,today.toISOString().split('T')[0]);if(fd<0)chase.push('治具→邵部长（工艺）超期'+Math.abs(fd)+'天');else if(fd>=0&&fd<=7)chase.push('治具→邵部长（工艺）还有'+fd+'天');}
+    if(d.productionComplete==='否')chase.push('中试生产→孙登琨（生产计划）');
+    if(!d.actualReview)chase.push('中试评审→姜雨豪（研发管理）');
+    if(!d.pilotConclusion)chase.push('中试结论→王国燕/郭嘉');
+    if(d.postConclusionIssues&&!d.actualClosure)chase.push('问题闭环→郭嘉');
+    html+='<div class="detail-section"><h3>🔧 中试细化进度</h3>';
+    if(chase.length>0){html+='<div class="chase-box"><strong>⚠️ 需要催办：</strong><ul style="margin:4px 0 0 16px;font-size:12px;color:#BF360C">';chase.forEach(function(c){html+='<li>'+c+'</li>';});html+='</ul></div>';}
+    html+='<table class="pilot-table">';
+    ['计划数量:'+d.planQty,'研发归档:'+(d.archiveComplete==='是'?'✅':'❌'),'物料齐套:'+(d.materialComplete==='是'?'✅':'❌'),'治具完成:'+(d.actualFixture||'⏳'),'生产完成:'+(d.productionComplete==='是'?'✅':'❌'),'中试评审:'+(d.actualReview||'⏳'),'中试结论:'+(d.pilotConclusion||'⏳')].forEach(function(r){var p2=r.split(':');html+='<tr><td>'+p2[0]+'</td><td>'+p2[1]+'</td></tr>';});
+    html+='</table></div>';
+  }
+  if(p.remark)html+='<div class="detail-section"><h3>📝 备注</h3><p style="font-size:13px;color:#616161">'+p.remark+'</p></div>';
+  panel.innerHTML=html;
+}
+
+function showPilotOverview() {
+  document.getElementById('detailPanel').style.display='none';
+  var container=document.getElementById('pilotOverview');container.style.display='block';
+  var pp=allProjects.filter(function(p){return p.pilotDetail;});
+  if(pp.length===0){container.innerHTML='<div class="empty-state"><p>没有中试项目</p></div>';return;}
+  var today=new Date();
+  var aspects=[{key:'',label:'全部'},{key:'archive',label:'① 归档'},{key:'material',label:'② 物料'},{key:'production',label:'③ 生产'},{key:'review',label:'④ 评审'}];
+  var html='<div style="padding:16px"><h2>🔧 中试进度概览</h2>';
+  html+='<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
+  aspects.forEach(function(a){var isOn=pilotFilterAspect===a.key;html+='<span class="pilot-chip'+(isOn?' on':'')+'" data-aspect="'+a.key+'" style="display:inline-block;cursor:pointer">'+a.label+'</span>';});
+  // Pre-filter with bottleneck logic
+  var filteredList=[];
+  pp.forEach(function(p){
+    var d=p.pilotDetail, prodDone2=d.productionComplete==='是';
+    var archDone2=d.archiveComplete==='是'||prodDone2, matDone2=d.materialComplete==='是'||prodDone2, reviewDone2=!!d.actualReview;
+    if(pilotFilterAspect==='archive'&&archDone2)return;
+    if(pilotFilterAspect==='material'){if(matDone2||!archDone2)return;}
+    if(pilotFilterAspect==='production'){if(prodDone2||!archDone2||!matDone2)return;}
+    if(pilotFilterAspect==='review'){if(reviewDone2||!archDone2||!matDone2||!prodDone2)return;}
+    filteredList.push(p);
+  });
+  // Summary
+  var totalCount=filteredList.length,doneCount=0,notDoneCount=0,warnArr=[];
+  filteredList.forEach(function(p){
+    var d=p.pilotDetail,allDone=d.archiveComplete==='是'&&d.materialComplete==='是'&&d.productionComplete==='是'&&!!d.actualReview;
+    if(allDone)doneCount++;else{notDoneCount++;var s='';if(d.archiveComplete!=='是')s='归档';else if(d.materialComplete!=='是')s='物料齐套';else if(d.productionComplete!=='是')s='生产';else if(!d.actualReview)s='评审';if(s)warnArr.push(p.name+'→'+s);}
+  });
+  html+='</div>';
+  html+='<div style="font-size:12px;color:#616161;margin-bottom:12px;background:#F5F5F5;padding:8px 12px;border-radius:6px">';
+  if(pilotFilterAspect)html+='未完成 <b style="color:#E53935">'+totalCount+'</b> 个';
+  else html+='共 <b>'+totalCount+'</b> 个项目，已完成 <b style="color:#43A047">'+doneCount+'</b> 个，未完成 <b style="color:#E53935">'+notDoneCount+'</b> 个';
+  if(warnArr.length>0)html+='<br>⚠️ 近期需提醒：'+warnArr.slice(0,5).join('、')+(warnArr.length>5?'等'+warnArr.length+'项':'');
+  html+='</div>';
+  // Render filtered projects
+  filteredList.forEach(function(p){
+    var d=p.pilotDetail, prodDone=d.productionComplete==='是',reviewDone=!!d.actualReview;
+    var archDone=d.archiveComplete==='是'||prodDone,matDone=d.materialComplete==='是'||prodDone;
+    var chase=[];
+    if(!archDone)chase.push('①归档→薛涵月');
+    if(!matDone)chase.push('②物料→生产计划');
+    if(!prodDone)chase.push('③生产→孙登琨');
+    if(!reviewDone){if(archDone&&matDone&&prodDone)chase.push('④评审→姜雨豪 ⚠️前序完成需催开评审会');else chase.push('④评审→姜雨豪');}
+    html+='<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;padding:12px;margin-bottom:8px">';
+    html+='<div style="display:flex;justify-content:space-between"><strong>'+p.name+'</strong><span style="background:'+(chase.length>0?'#E53935':'#E8F5E9')+';color:'+(chase.length>0?'#fff':'#2E7D32')+';padding:2px 8px;border-radius:10px;font-size:11px">'+(chase.length>0?chase.length+'项待催':'正常')+'</span></div>';
+    html+='<div style="font-size:11px;color:#757575;margin:4px 0">👤 '+(p.person||'-')+' | 📦 '+(p.series||'-')+'</div>';
+    if(chase.length>0){html+='<div class="chase-box">'+chase.map(function(c){return '• '+c}).join('<br>')+'</div>';}
+    html+='<div style="font-size:11px;color:#616161;display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">';
+    html+='<span>①归档:'+(archDone?'✅':'❌')+'</span><span>②物料:'+(matDone?'✅':'❌')+'</span><span>③生产:'+(prodDone?'✅':'❌')+'</span><span>④评审:'+(reviewDone?'✅':'⏳')+'</span></div></div>';
+  });
+  html+='</div>';container.innerHTML=html;
+}
+
+// 阶段筛选芯片
+document.getElementById('stageFilters').addEventListener('click',function(e){
+  if (e.target.classList.contains('stage-chip')) {
+    document.querySelectorAll('.stage-chip').forEach(function(c){c.classList.remove('active');});
+    e.target.classList.add('active');
+    stageFilter = e.target.getAttribute('data-stage');
+    renderList();
+  }
+});
+
+document.getElementById('pilotOverview').addEventListener('click',function(e){var t=e.target;while(t&&t!==document.body){if(t.getAttribute&&t.getAttribute('data-aspect')!==null){pilotFilterAspect=t.getAttribute('data-aspect');showPilotOverview();return;}t=t.parentElement;}});
+
+document.getElementById('searchInput').addEventListener('input',function(e){searchText=e.target.value;renderList();});
+document.getElementById('dateStart').addEventListener('change',function(e){dateStart=e.target.value;renderList();});
+document.getElementById('dateEnd').addEventListener('change',function(e){dateEnd=e.target.value;renderList();});
+
+// ==================== 加载 ====================
+function loadApp() {
+  try {
+    // 从当前目录加载Excel文件
+    var req = new XMLHttpRequest();
+    req.open('GET', '产品项目管理监控表20260529.xlsx', true);
+    req.responseType = 'arraybuffer';
+    req.onload = function() {
+      if (req.status !== 200) {
+        document.getElementById('projectList').innerHTML = '<div class="empty-state"><p style="color:#E53935">⚠️ Excel文件加载失败</p></div>';
+        return;
+      }
+      var data = new Uint8Array(req.response);
+      var wb = XLSX.read(data, {type: 'array'});
+      var s1 = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
+      var s2 = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[1]], {header:1, defval:''});
+      convertDates(s1); convertDates(s2);
+      document.getElementById('fileInfo').textContent = '📄 产品项目管理监控表.xlsx';
+      allProjects = parseData(s1, s2);
+      sortProjects(allProjects);
+      kpiData = calcKPI(allProjects);
+      filterNode = null;
+      renderKPI(); renderList();
+    };
+    req.onerror = function() {
+      document.getElementById('projectList').innerHTML = '<div class="empty-state"><p style="color:#E53935">⚠️ 无法加载Excel文件</p></div>';
+    };
+    req.send();
+  } catch(e) {
+    document.getElementById('projectList').innerHTML = '<div class="empty-state"><p style="color:#E53935">⚠️ 加载失败：'+e.message+'</p></div>';
+  }
+}
+</script>
+</body>
+</html>
