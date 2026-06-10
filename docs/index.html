@@ -345,7 +345,7 @@ function sortProjects(projects) {
   projects.forEach(function(p){
     var urgency;
     if(planKey&&p.dates[planKey]){
-      if(actualKey&&p.dates[actualKey]){urgency={days:Infinity,label:"已完成"};}
+      /* completed check below */
       else{var d=daysBetween(today,p.dates[planKey]);if(d<0)urgency={days:d,label:"超期"+Math.abs(d)+"天"};else if(d>0)urgency={days:d,label:"还有"+d+"天"};else urgency={days:Infinity,label:"今天到期"};}
     }else{urgency=extractDaysFromNode(p.nextNode);}
     p._urgencyDays=urgency.days;
