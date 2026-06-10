@@ -301,6 +301,7 @@ function parseData(s1, s2) {
 var KPI_NODES=['送检开始','送检结束','中试开始'];
 var NODE_PLAN={'送检开始':'送检开始计划','送检结束':'送检结束计划','中试开始':'中试开始计划'};
 var NODE_ACTUAL={'送检开始':'送检开始实际','送检结束':'送检结束实际','中试开始':'中试开始实际'};
+var STAGE_TO_PLAN={'送检':'送检开始计划','送检开始':'送检开始计划','送检结束':'送检结束计划','中试':'中试开始计划','中试开始':'中试开始计划','中试结束':'中试结束计划','上市':'上市计划'};var ACTUAL_MAP={'送检':'送检开始实际','送检开始':'送检开始实际','送检结束':'送检结束实际','中试':'中试开始实际','中试开始':'中试开始实际','中试结束':'中试结束实际','上市':'上市实际'};
 
 function isNodeDelayed(p, node, today) {
   var plan=p.dates[NODE_PLAN[node]], actual=p.dates[NODE_ACTUAL[node]];
@@ -336,18 +337,27 @@ function calcKPI(projects, today) {
 // ==================== 排序 ====================
 function sortProjects(projects) {
   var today=new Date().toISOString().split('T')[0];
+  var planKey = (typeof STAGE_TO_PLAN !== 'undefined' && stageFilter) ? STAGE_TO_PLAN[stageFilter] : null;
+  var actualKey = (typeof ACTUAL_MAP !== 'undefined' && stageFilter) ? ACTUAL_MAP[stageFilter] : null;
   projects.forEach(function(p){
-    var worst=Infinity;
-    for (var i=0;i<KPI_NODES.length;i++) {
-      var node=KPI_NODES[i], plan=p.dates[NODE_PLAN[node]], actual=p.dates[NODE_ACTUAL[node]];
-      if (!plan||actual) continue;
-      var d=daysBetween(today,plan); if (d<worst) worst=d;
+    var days;
+    if (planKey && p.dates[planKey]) {
+      if (actualKey && p.dates[actualKey]) { days = Infinity; }
+      else { days = daysBetween(today, p.dates[planKey]); if (days === Infinity) days = 999; }
+    } else {
+      var worst=Infinity;
+      for (var i=0;i<KPI_NODES.length;i++) {
+        var node=KPI_NODES[i], plan=p.dates[NODE_PLAN[node]], actual=p.dates[NODE_ACTUAL[node]];
+        if (!plan||actual) continue;
+        var d=daysBetween(today,plan); if (d<worst) worst=d;
+      }
+      days = worst;
     }
     var td=Infinity;
     var m=p.nextNode?p.nextNode.match(/已超期(\d+)天/):null; if(m) td=-parseInt(m[1]);
     m=p.nextNode?p.nextNode.match(/还有(\d+)天/):null; if(m) td=parseInt(m[1]);
     if(p.nextNode&&p.nextNode.includes('已完成')) td=Infinity;
-    if(worst!==Infinity&&worst<td){p._days=worst;p._label=worst<0?'超期'+Math.abs(worst)+'天':'还有'+worst+'天';}
+    if(days!==Infinity&&days<td){p._days=days;p._label=days<0?'超期'+Math.abs(days)+'天':'还有'+days+'天';}
     else{p._days=td;p._label=td===Infinity?(p.projectStatus||''):(td<0?'超期'+Math.abs(td)+'天':'还有'+td+'天');}
     p._level=td===Infinity?'completed':(td<-30?'overdue-severe':(td<0?'overdue':(td<=7?'warning':(td<=30?'soon':'normal'))));
     if(p.projectStatus==='完成'||p.projectStatus==='提前完成'){p._days=Infinity;p._label=p.projectStatus;p._level='completed';}
