@@ -335,25 +335,32 @@ function calcKPI(projects, today) {
 }
 
 // ==================== 排序 ====================
-function extractDaysFromNode(t){if(!t)return{label:"",days:Infinity};var s=String(t).trim();var m=s.match(/已超期(d+)天/);if(m)return{label:"超期"+m[1]+"天",days:-parseInt(m[1])};m=s.match(/还有(d+)天/);if(m)return{label:"还有"+m[1]+"天",days:parseInt(m[1])};if(s.includes("已完成"))return{label:"已完成",days:Infinity};return{label:s,days:Infinity};}
+function extractDaysFromNode(t){if(!t)return{label:"",days:Infinity};var s=String(t).trim();var m=s.match(/已超期(d+)天/);if(m)return{label:"超期"+m[1]+"天",days:-parseInt(m[1]);};m=s.match(/还有(d+)天/);if(m)return{label:"还有"+m[1]+"天",days:parseInt(m[1]);};if(s.includes("已完成"))return{label:"已完成",days:Infinity};return{label:s,days:Infinity};}
 function getUrgencyLevel(d){if(d===Infinity)return"completed";if(d<-30)return"overdue-severe";if(d<0)return"overdue";if(d<=7)return"warning";if(d<=30)return"soon";return"normal";}
 
 function sortProjects(projects) {
   var today=new Date().toISOString().split("T")[0];
   var planKey=(typeof STAGE_TO_PLAN!=="undefined"&&stageFilter)?STAGE_TO_PLAN[stageFilter]:null;
-  var actualKey=(typeof ACTUAL_MAP!=="undefined"&&stageFilter)?ACTUAL_MAP[stageFilter]:null;
   projects.forEach(function(p){
     var urgency;
     if(planKey&&p.dates[planKey]){
-      /* completed check below */
-      else{var d=daysBetween(today,p.dates[planKey]);if(d<0)urgency={days:d,label:"超期"+Math.abs(d)+"天"};else if(d>0)urgency={days:d,label:"还有"+d+"天"};else urgency={days:Infinity,label:"今天到期"};}
-    }else{urgency=extractDaysFromNode(p.nextNode);}
-    p._urgencyDays=urgency.days;
-    p._urgencyLabel=urgency.label;
-    p._urgencyLevel=getUrgencyLevel(urgency.days);
-    if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){p._urgencyDays=Infinity;p._urgencyLabel=p.projectStatus;p._urgencyLevel="completed";}
+      var days=daysBetween(today,p.dates[planKey]);
+      if(days<0)urgency={days:days,label:"超期"+Math.abs(days)+"天"};
+      else if(days>0)urgency={days:days,label:"还有"+days+"天"};
+      else urgency={days:Infinity,label:"今天到期"};
+    }else{
+      urgency=extractDaysFromNode(p.nextNode);
+    }
+    p._days=urgency.days;
+    p._label=urgency.label;
+    p._level=getUrgencyLevel(urgency.days);
+    if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){
+      p._days=Infinity;
+      p._label=p.projectStatus;
+      p._level="completed";
+    }
   });
-  projects.sort(function(a,b){return a._urgencyDays-b._urgencyDays||a.name.localeCompare(b.name,"zh-CN");});
+  projects.sort(function(a,b){return a._days-b._days||a.name.localeCompare(b.name,"zh-CN");});
   return projects;
 }
 // ==================== 渲染 ====================
@@ -380,9 +387,9 @@ function renderList() {
   container.innerHTML='';
   var ov=0,wn=0,nm=0,cp=0;
   filtered.forEach(function(p){
-    if(p._urgencyLevel==='overdue-severe'||p._urgencyLevel==='overdue')ov++;
-    else if(p._urgencyLevel==='warning'||p._urgencyLevel==='soon')wn++;
-    else if(p._urgencyLevel==='completed')cp++;else nm++;
+    if(p._level==='overdue-severe'||p._level==='overdue')ov++;
+    else if(p._level==='warning'||p._level==='soon')wn++;
+    else if(p._level==='completed')cp++;else nm++;
   });
   var sd=document.createElement('div');
   sd.style.cssText='padding:8px 16px;font-size:12px;background:#F5F5F5;border-bottom:1px solid #E0E0E0';
@@ -391,14 +398,14 @@ function renderList() {
   if(filtered.length===0){container.innerHTML='<div class="empty-state"><p>没有匹配的项目</p>'+(filterNode?'<button class="btn" onclick="filterNode=null;renderList()">← 返回</button>':'')+'</div>';return;}
   if(filterNode){var banner=document.createElement('div');banner.className='filter-banner';banner.innerHTML='<span>🔍 「'+filterNode+'」逾期未完成（'+filtered.length+'个项目）</span><button class="btn" onclick="filterNode=null;renderList()">✕ 清除</button>';container.appendChild(banner);}
   var groups={'overdue-severe':{label:'🔴 严重超期',items:[],cls:'overdue-severe'},'overdue':{label:'🟠 已超期',items:[],cls:'overdue'},'warning':{label:'🟡 即将到期',items:[],cls:'warning'},'soon':{label:'🟢 近期关注',items:[],cls:'soon'},'normal':{label:'🟢 正常',items:[],cls:'soon'},'completed':{label:'⚪ 已完成',items:[],cls:'completed'}};
-  filtered.forEach(function(p){var g=groups[p._urgencyLevel];if(g)g.items.push(p);else groups.normal.items.push(p);});
+  filtered.forEach(function(p){var g=groups[p._level];if(g)g.items.push(p);else groups.normal.items.push(p);});
   for(var gk in groups){
     var g=groups[gk];if(g.items.length===0) continue;
     var hdr=document.createElement('div');hdr.className='group-header '+g.cls;hdr.textContent=g.label+' ('+g.items.length+')';container.appendChild(hdr);
     g.items.forEach(function(p){
       var item=document.createElement('div');item.className='project-item';
       if(p.serialNo===selectedSerial) item.classList.add('selected');
-      item.innerHTML='<div class="item-info"><div class="item-name">'+(p.pilotDetail?'🔧 ':'')+p.name+'</div><div class="item-meta"><span>👤 '+(p.person||'-')+'</span><span>📦 '+(p.series||'-')+'</span><span>📍 '+(p.currentStage||'-')+'</span></div></div><span class="item-badge badge-'+p._urgencyLevel+'">'+p._urgencyLabel+'</span>';
+      item.innerHTML='<div class="item-info"><div class="item-name">'+(p.pilotDetail?'🔧 ':'')+p.name+'</div><div class="item-meta"><span>👤 '+(p.person||'-')+'</span><span>📦 '+(p.series||'-')+'</span><span>📍 '+(p.currentStage||'-')+'</span></div></div><span class="item-badge badge-'+p._level+'">'+p._label+'</span>';
       item.onclick=function(){selectedSerial=p.serialNo;renderList();renderDetail(p);document.getElementById('pilotOverview').style.display='none';document.getElementById('detailPanel').style.display='block';};
       container.appendChild(item);
     });
