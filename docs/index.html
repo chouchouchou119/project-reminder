@@ -358,7 +358,7 @@ function sortProjects(projects) {
     p._days=urgency.days;
     p._label=urgency.label;
     p._level=urgency.days===Infinity?"normal":(urgency.days<-30?"overdue-severe":(urgency.days<0?"overdue":(urgency.days<=7?"warning":(urgency.days<=30?"soon":"normal"))));
-    if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){p._days=Infinity;p._label=p.projectStatus;p._level="completed";}
+    if(p.projectStatus==="完成"||p.projectStatus==="提前完成"){p._days=Infinity;p._label=p.projectStatus;p._level="normal";}
   });
   projects.sort(function(a,b){return a._days-b._days||a.name.localeCompare(b.name,"zh-CN");});
   return projects;
